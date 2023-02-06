@@ -2,6 +2,7 @@
 """
 Created on Mon Feb  6 17:14:55 2023
 Data treatment from datalogger CSV file.
+CSV Data from datalogger must be in "data" directory
 @author: Jesús
 """
 
