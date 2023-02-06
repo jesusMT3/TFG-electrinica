@@ -8,7 +8,7 @@ Data treatment from datalogger CSV file.
 import pandas as pd
 from matplotlib import pyplot as plt
 import os
-from lib import functions as fn
+from mylibs import myfunctions as fn
  
 #%%
 
@@ -49,5 +49,3 @@ plt.legend()
 
 #%%
 # Mobile-mean filtering of channel data
-
-filtered_data = fn.mean_filter(data_21_07['CH1'], 1000)
