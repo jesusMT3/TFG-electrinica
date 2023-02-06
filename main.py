@@ -8,9 +8,9 @@ Data treatment from datalogger CSV file.
 import pandas as pd
 from matplotlib import pyplot as plt
 import os
-from mylibs import myfunctions as fn
+from scipy.signal import medfilt
  
-#%%
+#%%Load data
 
 #Import data from datalogger
 dirname = os.path.dirname(__file__) # absolute route to path
@@ -33,19 +33,68 @@ df = pd.read_csv(data,
 # Example of data extracted from a given date
 
 filter_day = '2022-07-21'
-data_21_07 = df[df.index.str.startswith(filter_day)]
-data_21_07.index = data_21_07['DateTime']
+data_day = df[df.index.str.startswith(filter_day)]
+data_day.index = data_day['DateTime']
+mean_coef = 201
 
+#filtering data
+filtered_data = pd.DataFrame(data_day)
 
+for i in range(1, 19):
+    try:
+        aux_str = "CH" + str(i)
+        filtered_data[aux_str] = medfilt(data_day[aux_str], mean_coef)
+    except KeyError:
+        print("Channel ",i ," does not exist")
+#%%
+
+#Temperature
+for i in range(19, 21):
+    
+    aux_str = "CH" + str(i)
+    filtered_data[aux_str].plot()
+    
+plt.xlabel('Date Time')
+plt.ylabel('Temperature [\Degree]')
+plt.title("Model temperature from " + filter_day)
+plt.legend()
+plt.grid(True)
+
+#%%
 # East plate
 for i in range(1, 5):
+    
     aux_str = "CH" + str(i)
-    data_21_07[aux_str].plot()
+    filtered_data[aux_str].plot()
     
 plt.xlabel('Date Time')
 plt.ylabel('Voltage [mV]')
-plt.title("East plate from "+ filter_day)
+plt.title("East plate from " + filter_day)
 plt.legend()
+plt.grid(True)
 
 #%%
-# Mobile-mean filtering of channel data
+# North West plate
+for i in range(5, 9):
+    
+    aux_str = "CH" + str(i)
+    filtered_data[aux_str].plot()
+    
+plt.xlabel('Date Time')
+plt.ylabel('Voltage [mV]')
+plt.title("North-West plate from " + filter_day)
+plt.legend()
+plt.grid(True)
+
+#%%
+# North East plate
+for i in range(11, 15):
+    
+    aux_str = "CH" + str(i)
+    filtered_data[aux_str].plot()
+    
+plt.xlabel('Date Time')
+plt.ylabel('Voltage [mV]')
+plt.title("North-East plate from " + filter_day)
+plt.legend()
+plt.grid(True)
