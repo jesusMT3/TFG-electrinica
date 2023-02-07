@@ -36,10 +36,16 @@ df = pd.read_csv(data,
 filter_day = '2022-07-21'
 data_day = df[df.index.str.startswith(filter_day)]
 data_day.index = data_day['DateTime']
-mean_coef = 201
-
-#filtering data
+mean_coef = 499
 filtered_data = pd.DataFrame(data_day)
+#average temperature
+average_T = filtered_data[['CH19', 'CH20']].mean(axis=1)
+k= [0.1658, 0.1638, 0.1664, 0.1678, 0.3334, 0.1686, 0.1673, 0, 0, 0, 0, 0.3306, 0.3317, 0.3341, 0.3361]
+alpha = 4.522e-4
+T0  = 298.15
+
+#filtering data through mobile-mean function from pandas library
+# filtered_data = pd.DataFrame(data_day)
 
 for i in range(1, 19):
     try:
@@ -47,27 +53,22 @@ for i in range(1, 19):
         filtered_data[aux_str] = medfilt(data_day[aux_str], mean_coef)
     except KeyError:
         print("Channel ",i ," does not exist")
-#%%
+        
+#%% 
 
-#Temperature
-for i in range(19, 21):
-    
-    aux_str = "CH" + str(i)
-    filtered_data[aux_str].plot()
-    
-plt.xlabel('Date Time')
-plt.ylabel('Temperature [\Degree]')
-plt.title("Model temperature from " + filter_day)
-plt.legend()
-plt.grid(True)
-
-#%%
 # East plate
+# Calculate irradiance
+
+filtered_irradiance = pd.DataFrame(filtered_data)
+
 for i in range(1, 5):
-    
+    coef = 1 + alpha * ((average_T)- T0)
+    filtered_irradiance[aux_str] /= (coef * k[i])
     aux_str = "CH" + str(i)
-    filtered_data[aux_str].plot()
+    filtered_irradiance[aux_str].plot()
     
+filtered_data['average_E'] = filtered_data[['CH1', 'CH2', 'CH3', 'CH4']].mean(axis=1)
+filtered_data['average_E'].plot()
 plt.xlabel('Date Time')
 plt.ylabel('Voltage [mV]')
 plt.title("East plate from " + filter_day)
@@ -99,3 +100,4 @@ plt.ylabel('Voltage [mV]')
 plt.title("North-East plate from " + filter_day)
 plt.legend()
 plt.grid(True)
+
