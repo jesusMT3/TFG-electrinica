@@ -26,3 +26,4 @@ def mean_filter(arr, k):
         arr4[i]=arr3[k+i]
 
     return arr4
+        
