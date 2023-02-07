@@ -161,3 +161,4 @@ cython_debug/
 *.csv
 
 dir_to_ignore/data
+*.png
