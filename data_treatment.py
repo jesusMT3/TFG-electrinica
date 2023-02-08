@@ -6,6 +6,8 @@ CSV Data from datalogger must be in "data" directory
 @author: Jesús
 """
 
+#%%library import cell
+
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
@@ -14,7 +16,7 @@ from scipy.signal import medfilt
 
 inf = np.inf
  
-#%%Load data
+#%%Load data cell
 
 #Import data from datalogger
 dirname = os.path.dirname(__file__) # absolute route to path
@@ -33,7 +35,7 @@ df = pd.read_csv(data,
                  skiprows = 40, # first 40 rows are datalogger specifications
                  index_col = 1) #to search for specific hours in dataframe
 
-#%% Example of data extracted from a given date
+#%% Sorting/filtering data cell
 
 filter_day = '2022-07-21'
 data_day = df[df.index.str.startswith(filter_day)]
@@ -51,9 +53,10 @@ for i in range(1, 19):
         aux_str = "CH" + str(i)
         filtered_data[aux_str] = medfilt(data_day[aux_str], mean_coef)
     except KeyError:
-        print("Channel ",i ," does not exist")
+        # print("Channel ",i ," does not exist")
+        continue
         
-#%% # Get irradiance from voltage data
+#%% # Irradiance conversion cell
 
 filtered_data['T_av'] = filtered_data[['CH19', 'CH20']].mean(axis=1) #average temperature
 k= [0.1658, 0.1638, 0.1664, 0.1678, 0.3334, 0.1686, 0.1673, inf, inf, inf, inf, 0.3306, 0.3317, 0.3341, 0.3361]
@@ -66,11 +69,11 @@ for i in range(1, 19):
         coef = 1 + alpha * ((filtered_data['T_av'] + 273.15)- T0)
         filtered_data['W' +  str(i)] = filtered_data["CH" + str(i)] / coef
         filtered_data['W' +  str(i)] /= k[i-1]
-        print(k[i-1])
     except KeyError:
+        # print("Channel ",i ," does not exist")
         continue
 
-#%% Plottings
+#%% Plotting cell
 
 # East plate
 
@@ -128,7 +131,7 @@ plt.title("Average irradiance from " + filter_day)
 plt.legend()
 plt.grid(True)
 
-#%% Daily insolation matrix
+#%% Daily insolation array cell
 
 dt = 1
 matrix = [[5, 5, 0, 0, 11, 11],
@@ -155,12 +158,26 @@ for i in range (0, len(matrix)):
     for j in range (0, len(matrix[0])):
         var = matrix[i][j]
         try:
-            insolation2d[i][j] = filtered_data['CH' + str(var)].sum() / 3600
+            insolation2d[i][j] = filtered_data['W' + str(var)].sum() / 3600
         except KeyError:
             insolation2d[i][j] = np.nan
             
-
-
 plt.imshow(insolation2d, extent=[0, 42, 33, 0]) #sensor 
-plt.title('Model insolation map')
+plt.title('Model insolation map [Wh/m$^2$]')
+plt.colorbar()
+
+
+#%%
+#interpolation data
+interpolation2d = np.zeros([len(matrix), len(matrix[0])])
+for i in range (0, len(matrix)):
+    for j in range (0, len(matrix[0])):
+        if matrix[i][j] != 0: interpolation2d[i][j] = insolation2d[i][j]
+
+
+interpolation2d[3][0] = insolation2d[3][1]
+interpolation2d[4][1] = insolation2d[4][0]
+
+plt.imshow(interpolation2d, extent=[0, 42, 33, 0]) #sensor 
+plt.title('Model insolation map [Wh/m$^2$]')
 plt.colorbar()
