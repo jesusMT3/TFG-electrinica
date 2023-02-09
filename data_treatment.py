@@ -38,7 +38,7 @@ df = pd.read_csv(data,
 
 #%% Sorting/filtering data cell
 
-filter_day = '2022-07-21'
+filter_day = '2022-07'
 data_day = df[df.index.str.startswith(filter_day)]
 data_day.index = data_day['DateTime']
 mean_coef = 3
