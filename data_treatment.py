@@ -2,7 +2,7 @@
 """
 Created on Mon Feb  6 17:14:55 2023
 Data treatment from datalogger CSV file.
-CSV Data from datalogger must be in "data" directory
+CSV Data from datalogger should be in "data" directory
 @author: Jesús
 """
 
@@ -13,6 +13,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import os
 from scipy.signal import medfilt
+import scipy
 
 inf = np.inf
  
@@ -40,7 +41,7 @@ df = pd.read_csv(data,
 filter_day = '2022-07-21'
 data_day = df[df.index.str.startswith(filter_day)]
 data_day.index = data_day['DateTime']
-mean_coef = 499
+mean_coef = 3
 filtered_data = pd.DataFrame(data_day)
 #average temperature
 
@@ -151,6 +152,23 @@ matrix = [[5, 5, 0, 0, 11, 11],
           [0, 0, 0, 0, 0 , 0 ],
           [0, 0, 0, 1, 0 , 0 ]]
 
+matrix = [[5, 5, 0, 0, 11, 11],
+          [0, 0, 0, 0, 0 , 0 ],
+          [0, 0, 0, 0, 0 , 0 ],
+          [0, 6, 0, 0, 12, 12],
+          [7, 0, 0, 0, 13, 13],
+          [0, 0, 0, 0, 0 , 0 ],
+          [0, 0, 0, 0, 0 , 0 ],
+          [8, 8, 0, 0, 14, 14],
+          [0, 0, 0, 4, 0 , 0 ],
+          [0, 0, 0, 0, 0 , 0 ],
+          [0, 0, 0, 0, 0 , 0 ],
+          [0, 0, 0, 3, 0 , 0 ],
+          [0, 0, 0, 2, 0 , 0 ],
+          [0, 0, 0, 0, 0 , 0 ],
+          [0, 0, 0, 0, 0 , 0 ],
+          [0, 0, 0, 1, 0 , 0 ]]
+
 
 insolation2d = np.zeros([len(matrix), len(matrix[0])])
 #get insolation matrix
@@ -159,6 +177,8 @@ for i in range (0, len(matrix)):
         var = matrix[i][j]
         try:
             insolation2d[i][j] = filtered_data['W' + str(var)].sum() / 3600
+            if insolation2d[i][j] < 100:
+                insolation2d[i][j] = 0
         except KeyError:
             insolation2d[i][j] = np.nan
             
@@ -167,17 +187,53 @@ plt.title('Model insolation map [Wh/m$^2$]')
 plt.colorbar()
 
 
+
 #%%
 #interpolation data
-interpolation2d = np.zeros([len(matrix), len(matrix[0])])
-for i in range (0, len(matrix)):
-    for j in range (0, len(matrix[0])):
-        if matrix[i][j] != 0: interpolation2d[i][j] = insolation2d[i][j]
+# interpolation2d = np.zeros([len(matrix), len(matrix[0])])
+interpolation2d = pd.DataFrame(insolation2d)
 
+kernel = [[1, 1, 1],
+          [1, 1, 1],
+          [1, 1, 1]]
 
-interpolation2d[3][0] = insolation2d[3][1]
-interpolation2d[4][1] = insolation2d[4][0]
+# for i in range (0, len(matrix)):
+#     for j in range (0, len(matrix[0])):
+#         var = 0
+#         aux = 1
+#         if insolation2d[i][j] != 0:
+#             interpolation2d[i][j] = insolation2d[i][j]
+            
+#         if insolation2d[i][j] == 0:
+#             for x in range(i-1, i+1):
+#                 for y in range(j-1, j+1):
+#                     if x != 0 or y != 0:
+#                         if insolation2d[x][y] != 0:
+#                             aux += 1
+#                             var += insolation2d[x][y]
+#             interpolation2d[i][j] = var / aux
 
+#interpolation2d = scipy.signal.convolve2d(insolation2d, kernel, mode='same')
+
+#interpolation2d.interpolate(method = 'pad', limit = 2) 
+
+#pandas dataframe interpolation
+
+#vertial interpolation
+for i in [0, 1, 4, 5]:
+    aux = interpolation2d[i].loc[0:7]  
+    interpolation2d[i].loc[0:7] = aux.interpolate(method = 'linear').bfill()
+    
+
+aux = interpolation2d[3].loc[8:15]  
+interpolation2d[3].loc[8:15] = aux.interpolate(method = 'linear').bfill()
+    
+interpolation2d = interpolation2d.T
+#horizontal interpolation
+for i in range(0, 16):
+    interpolation2d[i] = interpolation2d[i].interpolate(method = 'linear').bfill()
+
+interpolation2d = interpolation2d.T
 plt.imshow(interpolation2d, extent=[0, 42, 33, 0]) #sensor 
 plt.title('Model insolation map [Wh/m$^2$]')
 plt.colorbar()
