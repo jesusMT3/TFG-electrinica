@@ -5,91 +5,79 @@ Created on Fri Feb 10 10:03:43 2023
 @author: Jesús
 """
 import tkinter as tk
-from tkinter.filedialog import askopenfilename
+from tkinter import filedialog, messagebox, Listbox
 import pandas as pd
-import numpy as np
-from matplotlib import pyplot as plt
-import os
-from scipy.signal import medfilt
-import scipy
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-inf = np.inf
+cols = ["No", "DateTime", "ms", "CH1", "CH2", "CH3", "CH4", "CH5", 
+        "CH6", "CH7", "CH8", "CH9", "CH11", "CH12", "CH13", "CH14", 
+        "CH15", "CH19", "CH20", "GS1", "GS2", "GS3", "GS4", "Alarm1", 
+        "Alarm2", "Alarm3", "AlarmOut"] # columns in which the data from data is organised
 
-
-def import_csv_data():
-    global v
+def select_file():
+    data = filedialog.askopenfilename()
     global df
-    csv_file_path = askopenfilename()
-    print('Opening file...')
-    v.set(csv_file_path)
-    
-    cols = ["No", "DateTime", "ms", "CH1", "CH2", "CH3", "CH4", "CH5", 
-            "CH6", "CH7", "CH8", "CH9", "CH11", "CH12", "CH13", "CH14", 
-            "CH15", "CH19", "CH20", "GS1", "GS2", "GS3", "GS4", "Alarm1", 
-            "Alarm2", "Alarm3", "AlarmOut"] # columns in which the data from data is organised
-    
-    df = pd.read_csv(csv_file_path,
+    df = pd.read_csv(data,
                      sep="\s+|,", # two types of separation
                      names = cols, # names of the columns
                      header = None, # csv file with no header, customized "cols"
                      engine = "python",
                      skiprows = 40, # first 40 rows are datalogger specifications
                      index_col = 1) #to search for specific hours in dataframe
-    
-    print('File openend!')
-    print(df.head())
+    for col in df.columns:
+        listbox.insert("end", col)
+    return df
 
-def filter_csv_data():
-    print('Sorting data...')
-    global filtered_data
-    global filter_day
-    filter_day = '2022-07-21'
-    data_day = df[df.index.str.startswith(filter_day)]
-    data_day.index = data_day['DateTime']
-    mean_coef = 3
-    filtered_data = pd.DataFrame(data_day)
-    #average temperature
+def plot_data():
+    try:
+        selected = [listbox.get(idx) for idx in listbox.curselection()]
+        fig, ax = plt.subplots()
+        for col in selected:
+            ax.plot(df_search[col], label=col)
+        ax.legend()
+        ax.set_xlabel("DateTime")
+        ax.set_ylabel("Values")
+        ax.set_title("Selected Data Plot")
 
-
-    #filtering data through mobile-mean function from pandas library
-    # filtered_data = pd.DataFrame(data_day)
-
-    for i in range(1, 19):
+        global canvas # add global keyword
         try:
-            aux_str = "CH" + str(i)
-            filtered_data[aux_str] = medfilt(data_day[aux_str], mean_coef)
-        except KeyError:
-            print("Channel ",i ," does not exist")
-            continue
-    
-
-    filtered_data['T_av'] = filtered_data[['CH19', 'CH20']].mean(axis=1) #average temperature
-    k= [0.1658, 0.1638, 0.1664, 0.1678, 0.3334, 0.1686, 0.1673, inf, inf, inf, inf, 0.3306, 0.3317, 0.3341, 0.3361]
-    alpha = 4.522e-4 # pu units
-    T0  = 298.15 # STC temperature
-    
-    for i in range(1, 19):
-        # Irradiance conversion with temperature dependance
-        try:
-            coef = 1 + alpha * ((filtered_data['T_av'] + 273.15) - T0)
-            filtered_data['W' +  str(i)] = filtered_data["CH" + str(i)] / coef
-            filtered_data['W' +  str(i)] /= k[i-1]
-        except KeyError:
-            continue
+            canvas.get_tk_widget().destroy() # remove the old plot
+        except:
+            pass
+        canvas = FigureCanvasTkAgg(fig, master=root)
+        canvas.draw()
+        canvas.get_tk_widget().pack()
+    except Exception as e:
+        messagebox.showerror("Error", str(e))
         
-    print('Action completed!')
-    print(data_day.head())
-    
-# def plot_data(msg):
-#     print(msg)
-    
-    
+def search_by():
+    date = search_entry.get()
+    global df_search
+    df_search = df[df.index.str.startswith(date)].copy()
+    # df_search.index = df_search['DateTime']
+
+        
 root = tk.Tk()
-tk.Label(root, text='File Path').grid(row=0, column=0)
-v = tk.StringVar()
-entry = tk.Entry(root, textvariable=v).grid(row=0, column=1)
-tk.Button(root, text='Select',command=import_csv_data).grid(row=1, column=0)
-tk.Button(root, text='Close',command=root.destroy).grid(row=9, column=2)
-tk.Button(root, text='Sort Data',command=filter_csv_data).grid(row=0, column=2)
-# tk.Button(root, text='Plot irradiance',command=plot_data('hello world')).grid(row=1, column=2)
+root.title("DataFrame Plotter")
+
+button = tk.Button(root, text="Select file", command=select_file)
+button.pack()
+
+listbox = Listbox(root, selectmode="multiple")
+listbox.pack()
+
+search_label = tk.Label(root, text="Search by:")
+search_label.pack()
+
+search_entry = tk.Entry(root)
+search_entry.pack()
+
+search_button = tk.Button(root, text="Search", command=search_by)
+search_button.pack()
+
+button_show = tk.Button(root, text = 'Plot data', command = plot_data)
+button_show.pack()
+
+
 root.mainloop()
