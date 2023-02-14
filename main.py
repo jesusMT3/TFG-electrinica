@@ -35,6 +35,7 @@ def plot_data():
         selected = [listbox.get(idx) for idx in listbox.curselection()]
         fig, ax = plt.subplots()
         for col in selected:
+            filtered_data[col] = medfilt(filtered_data[col], 499)
             filtered_data[col].plot(linewidth = 1)
         ax.legend()
         ax.set_xlabel("DateTime")
@@ -57,12 +58,6 @@ def search_by():
     global filtered_data
     filtered_data = df[df.index.str.startswith(date)].copy()
     filtered_data.index = filtered_data['DateTime']
-    for i in range (1, 20):
-        if filtered_data.columns(i).str.startswith('CH'):
-            aux = 'CH' + str(i)
-            filtered_data[aux] = medfilt(filtered_data[aux], 101)
-    
-
         
 root = tk.Tk()
 root.title("DataFrame Plotter")

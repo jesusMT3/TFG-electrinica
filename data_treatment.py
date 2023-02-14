@@ -40,6 +40,8 @@ df = pd.read_csv(data,
                  index_col = 1) #to search for specific hours in dataframe
 
 #%% Sorting/filtering data cell
+directory = os.path.dirname(__file__)
+file_name = os.path.join(directory, 'data')
 
 filter_day = '2022-07-21'
 data_day = df[df.index.str.startswith(filter_day)]
@@ -60,7 +62,7 @@ for i in range(1, 19):
         # print("Channel ",i ," does not exist")
         continue
         
-#%% # Irradiance conversion cell
+# Irradiance conversion cell
 
 filtered_data['T_av'] = filtered_data[['CH19', 'CH20']].mean(axis=1) #average temperature
 k= [0.1658, 0.1638, 0.1664, 0.1678, 0.3334, 0.1686, 0.1673, inf, inf, inf, inf, 0.3306, 0.3317, 0.3341, 0.3361]
@@ -76,6 +78,8 @@ for i in range(1, 19):
     except KeyError:
         # print("Channel ",i ," does not exist")
         continue
+    
+filtered_data.to_csv(path_or_buf = file_name)
 
 #%% Plotting cell
 
@@ -195,32 +199,6 @@ plt.colorbar()
 #interpolation data
 # interpolation2d = np.zeros([len(matrix), len(matrix[0])])
 interpolation2d = pd.DataFrame(insolation2d)
-
-kernel = [[1, 1, 1],
-          [1, 1, 1],
-          [1, 1, 1]]
-
-# for i in range (0, len(matrix)):
-#     for j in range (0, len(matrix[0])):
-#         var = 0
-#         aux = 1
-#         if insolation2d[i][j] != 0:
-#             interpolation2d[i][j] = insolation2d[i][j]
-            
-#         if insolation2d[i][j] == 0:
-#             for x in range(i-1, i+1):
-#                 for y in range(j-1, j+1):
-#                     if x != 0 or y != 0:
-#                         if insolation2d[x][y] != 0:
-#                             aux += 1
-#                             var += insolation2d[x][y]
-#             interpolation2d[i][j] = var / aux
-
-#interpolation2d = scipy.signal.convolve2d(insolation2d, kernel, mode='same')
-
-#interpolation2d.interpolate(method = 'pad', limit = 2) 
-
-#pandas dataframe interpolation
 
 #vertial interpolation
 for i in [0, 1, 4, 5]:
