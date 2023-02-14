@@ -14,14 +14,17 @@ from matplotlib import pyplot as plt
 import os
 from scipy.signal import medfilt
 import scipy
+import tkinter as tk
+from tkinter import filedialog
 
 inf = np.inf
  
 #%%Load data cell
 
 #Import data from datalogger
-dirname = os.path.dirname(__file__) # absolute route to path
-data = os.path.join(dirname, 'data/220720-205300.csv') # file should be located in data directory
+tk.Tk().withdraw() # we don't want a full GUI, so keep the root window from appearing
+data = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")]) # show an "Open" dialog box and return the path to the selected file
+print(data)
 
 cols = ["No", "DateTime", "ms", "CH1", "CH2", "CH3", "CH4", "CH5", 
         "CH6", "CH7", "CH8", "CH9", "CH11", "CH12", "CH13", "CH14", 
@@ -38,7 +41,7 @@ df = pd.read_csv(data,
 
 #%% Sorting/filtering data cell
 
-filter_day = '2022-07'
+filter_day = '2022-07-21'
 data_day = df[df.index.str.startswith(filter_day)]
 data_day.index = data_day['DateTime']
 mean_coef = 3

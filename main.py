@@ -9,6 +9,7 @@ from tkinter import filedialog, messagebox, Listbox
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from scipy.signal import medfilt
 
 cols = ["No", "DateTime", "ms", "CH1", "CH2", "CH3", "CH4", "CH5", 
         "CH6", "CH7", "CH8", "CH9", "CH11", "CH12", "CH13", "CH14", 
@@ -34,7 +35,7 @@ def plot_data():
         selected = [listbox.get(idx) for idx in listbox.curselection()]
         fig, ax = plt.subplots()
         for col in selected:
-            ax.plot(df_search[col], label=col)
+            filtered_data[col].plot(linewidth = 1)
         ax.legend()
         ax.set_xlabel("DateTime")
         ax.set_ylabel("Values")
@@ -53,9 +54,14 @@ def plot_data():
         
 def search_by():
     date = search_entry.get()
-    global df_search
-    df_search = df[df.index.str.startswith(date)].copy()
-    # df_search.index = df_search['DateTime']
+    global filtered_data
+    filtered_data = df[df.index.str.startswith(date)].copy()
+    filtered_data.index = filtered_data['DateTime']
+    for i in range (1, 20):
+        if filtered_data.columns(i).str.startswith('CH'):
+            aux = 'CH' + str(i)
+            filtered_data[aux] = medfilt(filtered_data[aux], 101)
+    
 
         
 root = tk.Tk()
