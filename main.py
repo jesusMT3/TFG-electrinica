@@ -4,12 +4,16 @@ Created on Fri Feb 10 10:03:43 2023
 
 @author: Jesús
 """
+import sys
+import os
+sys.path.append(os.path.dirname(__file__))
+
 import tkinter as tk
 from tkinter import filedialog, messagebox, Listbox
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from scipy.signal import medfilt
+from myfunctions import smooth
 
 cols = ["No", "DateTime", "ms", "CH1", "CH2", "CH3", "CH4", "CH5", 
         "CH6", "CH7", "CH8", "CH9", "CH11", "CH12", "CH13", "CH14", 
@@ -29,16 +33,14 @@ def select_file():
                      engine = "python",
                      skiprows = 40, # first 40 rows are datalogger specifications
                      index_col = 1) #to search for specific hours in dataframe
-    for col in df.columns:
-        listbox.insert("end", col)
-    return df
+    print('Done')
 
 def plot_data():
     try:
         selected = [listbox.get(idx) for idx in listbox.curselection()]
         fig, ax = plt.subplots()
         for col in selected:
-            filtered_data[col] = medfilt(filtered_data[col], 499)
+            filtered_data[col] = smooth(filtered_data[col], 1000)
             filtered_data[col].plot(linewidth = 1)
         ax.legend()
         ax.set_xlabel("DateTime")
@@ -61,6 +63,9 @@ def search_by():
     global filtered_data
     filtered_data = df[df.index.str.startswith(date)].copy()
     filtered_data.index = filtered_data['DateTime']
+    for col in filtered_data.columns:
+        listbox.insert("end", col)
+    return df
         
 root = tk.Tk()
 root.title("DataFrame Plotter")

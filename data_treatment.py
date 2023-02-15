@@ -7,15 +7,16 @@ CSV Data from datalogger should be in "data" directory
 """
 
 #%%library import cell
+import sys
+import os
+sys.path.append(os.path.dirname(__file__))
 
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
-import os
-from scipy.signal import medfilt
-import scipy
 import tkinter as tk
 from tkinter import filedialog
+from myfunctions import smooth
 
 inf = np.inf
  
@@ -59,7 +60,7 @@ filtered_data = pd.DataFrame(data_day)
 for i in range(1, 19):
     try:
         aux_str = "CH" + str(i)
-        filtered_data[aux_str] = medfilt(data_day[aux_str], mean_coef)
+        filtered_data[aux_str] = smooth(filtered_data[aux_str], 1000)
     except KeyError:
         # print("Channel ",i ," does not exist")
         continue
@@ -199,7 +200,6 @@ plt.colorbar()
 #interpolation data
 # interpolation2d = np.zeros([len(matrix), len(matrix[0])])
 interpolation2d = pd.DataFrame(insolation2d)
-
 #vertial interpolation
 for i in [0, 1, 4, 5]:
     aux = interpolation2d[i].loc[0:7]  
@@ -215,6 +215,17 @@ for i in range(0, 16):
     interpolation2d[i] = interpolation2d[i].interpolate(method = 'linear').bfill()
 
 interpolation2d = interpolation2d.T
+
+
 plt.imshow(interpolation2d, extent=[0, 42, 33, 0]) #sensor 
-plt.title('Model insolation map [Wh/m$^2$]')
-plt.colorbar()
+plt.title('Model insolation map')
+plt.colorbar(label = 'Mismatch loss factor [%]')
+
+#%% Mismatch factor
+max_value = interpolation2d.max().max()
+mismatch2d = interpolation2d / max_value /100
+interpolation2d /= max_value/100
+
+plt.imshow(interpolation2d, extent=[0, 42, 33, 0]) #sensor 
+plt.title('Model insolation map')
+plt.colorbar(label = 'Mismatch loss factor [%]')
