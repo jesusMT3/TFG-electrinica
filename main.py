@@ -17,8 +17,11 @@ cols = ["No", "DateTime", "ms", "CH1", "CH2", "CH3", "CH4", "CH5",
         "Alarm2", "Alarm3", "AlarmOut"] # columns in which the data from data is organised
 
 def select_file():
-    data = filedialog.askopenfilename()
     global df
+    try:
+        data = filedialog.askopenfilename()
+    except FileNotFoundError:
+        print('File not found')
     df = pd.read_csv(data,
                      sep="\s+|,", # two types of separation
                      names = cols, # names of the columns

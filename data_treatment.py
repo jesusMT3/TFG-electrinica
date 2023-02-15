@@ -22,7 +22,7 @@ inf = np.inf
 #%%Load data cell
 
 #Import data from datalogger
-tk.Tk().withdraw() # we don't want a full GUI, so keep the root window from appearing
+root = tk.Tk()
 data = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")]) # show an "Open" dialog box and return the path to the selected file
 print(data)
 
@@ -39,14 +39,16 @@ df = pd.read_csv(data,
                  skiprows = 40, # first 40 rows are datalogger specifications
                  index_col = 1) #to search for specific hours in dataframe
 
+root.destroy()
 #%% Sorting/filtering data cell
+
 directory = os.path.dirname(__file__)
-file_name = os.path.join(directory, 'data')
+file_name = os.path.join(directory, 'Data/filtered_data.csv')
 
 filter_day = '2022-07-21'
 data_day = df[df.index.str.startswith(filter_day)]
 data_day.index = data_day['DateTime']
-mean_coef = 3
+mean_coef = 999
 filtered_data = pd.DataFrame(data_day)
 #average temperature
 
@@ -62,7 +64,7 @@ for i in range(1, 19):
         # print("Channel ",i ," does not exist")
         continue
         
-# Irradiance conversion cell
+# Irradiance conversion
 
 filtered_data['T_av'] = filtered_data[['CH19', 'CH20']].mean(axis=1) #average temperature
 k= [0.1658, 0.1638, 0.1664, 0.1678, 0.3334, 0.1686, 0.1673, inf, inf, inf, inf, 0.3306, 0.3317, 0.3341, 0.3361]
@@ -78,8 +80,6 @@ for i in range(1, 19):
     except KeyError:
         # print("Channel ",i ," does not exist")
         continue
-    
-filtered_data.to_csv(path_or_buf = file_name)
 
 #%% Plotting cell
 
