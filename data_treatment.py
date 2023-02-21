@@ -2,177 +2,77 @@
 """
 Created on Mon Feb  6 17:14:55 2023
 Data treatment from datalogger CSV file.
-CSV Data from datalogger should be in "data" directory
 @author: Jesús
 """
 
-#%%library import cell
+#library import
+
+import sys
+import os
+sys.path.append(os.path.dirname(__file__))
 
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
-import os
-from scipy.signal import medfilt
-import scipy
-
+import myfunctions as f
 inf = np.inf
  
-#%%Load data cell
-
 #Import data from datalogger
-dirname = os.path.dirname(__file__) # absolute route to path
-data = os.path.join(dirname, 'data/220720-205300.csv') # file should be located in data directory
+df = f.datalogger_import(f.cols)
+print("File imported")
 
-cols = ["No", "DateTime", "ms", "CH1", "CH2", "CH3", "CH4", "CH5", 
-        "CH6", "CH7", "CH8", "CH9", "CH11", "CH12", "CH13", "CH14", 
-        "CH15", "CH19", "CH20", "GS1", "GS2", "GS3", "GS4", "Alarm1", 
-        "Alarm2", "Alarm3", "AlarmOut"] # columns in which the data from data is organised
+# Sorting/filtering data 
+filtered_data = f.datalogger_filter(df, 
+                                    filt = input('Enter date filter: '), 
+                                    mean_coeff = 1000,
+                                    irr_coef = f.irr_coef) 
 
-df = pd.read_csv(data,
-                 sep="\s+|,", # two types of separation
-                 names = cols, # names of the columns
-                 header = None, # csv file with no header, customized "cols"
-                 engine = "python",
-                 skiprows = 40, # first 40 rows are datalogger specifications
-                 index_col = 1) #to search for specific hours in dataframe
+#Plotting
 
-#%% Sorting/filtering data cell
+east = ['W1', 'W2', 'W3', 'W4']
+north_west = ['W5', 'W6', 'W7', 'W8']
+south_west = ['W11', 'W12', 'W13', 'W14']
 
-filter_day = '2022-07'
-data_day = df[df.index.str.startswith(filter_day)]
-data_day.index = data_day['DateTime']
-mean_coef = 3
-filtered_data = pd.DataFrame(data_day)
-#average temperature
+f.plot_channels(magnitude = 'Irradiance [W/m$^2$]', dataframe = filtered_data, plate = east, title = 'East plate')
+f.plot_channels(magnitude = 'Irradiance [W/m$^2$]', dataframe = filtered_data, plate = north_west, title = 'North-West plate')
+f.plot_channels(magnitude = 'Irradiance [W/m$^2$]', dataframe = filtered_data, plate = south_west, title = 'South-West plate')
 
+# Average plate irradiance
 
-#filtering data through mobile-mean function from pandas library
-# filtered_data = pd.DataFrame(data_day)
+filtered_data['e_average'] = filtered_data[east].mean(axis=1)   
+filtered_data['NW_average'] = filtered_data[north_west].mean(axis=1)
+filtered_data['SW_average'] = filtered_data[south_west].mean(axis=1)
 
-for i in range(1, 19):
-    try:
-        aux_str = "CH" + str(i)
-        filtered_data[aux_str] = medfilt(data_day[aux_str], mean_coef)
-    except KeyError:
-        # print("Channel ",i ," does not exist")
-        continue
-        
-#%% # Irradiance conversion cell
-
-filtered_data['T_av'] = filtered_data[['CH19', 'CH20']].mean(axis=1) #average temperature
-k= [0.1658, 0.1638, 0.1664, 0.1678, 0.3334, 0.1686, 0.1673, inf, inf, inf, inf, 0.3306, 0.3317, 0.3341, 0.3361]
-alpha = 4.522e-4 # pu units
-T0  = 298.15 # STC temperature
-
-for i in range(1, 19):
-    # Irradiance conversion with temperature dependance
-    try:
-        coef = 1 + alpha * ((filtered_data['T_av'] + 273.15)- T0)
-        filtered_data['W' +  str(i)] = filtered_data["CH" + str(i)] / coef
-        filtered_data['W' +  str(i)] /= k[i-1]
-    except KeyError:
-        # print("Channel ",i ," does not exist")
-        continue
-
-#%% Plotting cell
-
-# East plate
+f.plot_channels(magnitude = 'Irradiance [W/m$^2$]', 
+                dataframe = filtered_data, 
+                plate = ['e_average', 'NW_average', 'SW_average'], 
+                title = 'Average plate irradiance')
 
 
-plt.figure(num = 1)
-
-for i in range (1,5):
-    filtered_data['W' + str(i)].plot(linewidth = 1)
-    
-plt.xlabel('Date Time')
-plt.ylabel('Irradiance [W/m$^2$]')
-plt.title("East plate from " + filter_day)
-plt.legend()
-plt.grid(True)
-
-# North West Plate
-
-plt.figure(num = 2)
-
-for i in range (5,9):
-    filtered_data['W' + str(i)].plot(linewidth = 1)
-
-plt.xlabel('Date Time')
-plt.ylabel('Irradiance [W/m$^2$]')
-plt.title("North-West plate from " + filter_day)
-plt.legend()
-plt.grid(True)
-
-# North East Plate
-plt.figure(num = 3)
-
-for i in range (11,15):
-    filtered_data['W' + str(i)].plot(linewidth = 1)
-
-plt.xlabel('Date Time')
-plt.ylabel('Irradiance [W/m$^2$]')
-plt.title("South-West plate from " + filter_day)
-plt.legend()
-plt.grid(True)
-
-# Comparison between plates
-plt.figure(num = 4)
-filtered_data['e_average'] = filtered_data[['W1', 'W2', 'W3', 'W4']].mean(axis=1)   
-filtered_data['e_average'].plot(label = 'East', linewidth = 1.5)
-
-filtered_data['NW_average'] = filtered_data[['W5', 'W6', 'W7', 'W8']].mean(axis=1)
-filtered_data['NW_average'].plot(label = 'North West', linewidth = 1.5)
-
-filtered_data['SW_average'] = filtered_data[['W11', 'W12', 'W13', 'W14']].mean(axis=1)
-filtered_data['SW_average'].plot(label = 'South West', linewidth = 1.5)
-
-plt.xlabel('Date Time')
-plt.ylabel('Irradiance [W/m$^2$]')
-plt.title("Average irradiance from " + filter_day)
-plt.legend()
-plt.grid(True)
-
-#%% Daily insolation array cell
+# Daily insolation array
 
 dt = 1
-matrix = [[5, 5, 0, 0, 11, 11],
-          [0, 0, 0, 0, 0 , 0 ],
-          [0, 0, 0, 0, 0 , 0 ],
-          [0, 6, 0, 0, 12, 12],
-          [7, 0, 0, 0, 13, 13],
-          [0, 0, 0, 0, 0 , 0 ],
-          [0, 0, 0, 0, 0 , 0 ],
-          [8, 8, 0, 0, 14, 14],
-          [0, 0, 0, 4, 0 , 0 ],
-          [0, 0, 0, 0, 0 , 0 ],
-          [0, 0, 0, 0, 0 , 0 ],
-          [0, 0, 0, 3, 0 , 0 ],
-          [0, 0, 0, 2, 0 , 0 ],
-          [0, 0, 0, 0, 0 , 0 ],
-          [0, 0, 0, 0, 0 , 0 ],
-          [0, 0, 0, 1, 0 , 0 ]]
-
-matrix = [[5, 5, 0, 0, 11, 11],
-          [0, 0, 0, 0, 0 , 0 ],
-          [0, 0, 0, 0, 0 , 0 ],
-          [0, 6, 0, 0, 12, 12],
-          [7, 0, 0, 0, 13, 13],
-          [0, 0, 0, 0, 0 , 0 ],
-          [0, 0, 0, 0, 0 , 0 ],
-          [8, 8, 0, 0, 14, 14],
-          [0, 0, 0, 4, 0 , 0 ],
-          [0, 0, 0, 0, 0 , 0 ],
-          [0, 0, 0, 0, 0 , 0 ],
-          [0, 0, 0, 3, 0 , 0 ],
-          [0, 0, 0, 2, 0 , 0 ],
-          [0, 0, 0, 0, 0 , 0 ],
-          [0, 0, 0, 0, 0 , 0 ],
-          [0, 0, 0, 1, 0 , 0 ]]
-
+matrix = [[0, 0,    5, 5,   0, 0,    11, 11,    0, 0],
+          [0, 0,    0, 0,   0, 0,    0 , 0 ,    0, 0],
+          [0, 0,    0, 0,   0, 0,    0 , 0 ,    0, 0],
+          [0, 0,    6, 6,   0, 0,    12, 12,    0, 0],
+          [0, 0,    7, 7,   0, 0,    13, 13,    0, 0],
+          [0, 0,    0, 0,   0, 0,    0 , 0 ,    0, 0],
+          [0, 0,    0, 0,   0, 0,    0 , 0 ,    0, 0],
+          [0, 0,    8, 8,   0, 0,    14, 14,    0, 0],
+          
+          [0, 0,    0, 0,   4, 4,    0 , 0 ,    0, 0],
+          [0, 0,    0, 0,   0, 0,    0 , 0 ,    0, 0],
+          [0, 0,    0, 0,   0, 0,    0 , 0 ,    0, 0],
+          [0, 0,    0, 0,   3, 3,    0 , 0 ,    0, 0],
+          [0, 0,    0, 0,   2, 2,    0 , 0 ,    0, 0],
+          [0, 0,    0, 0,   0, 0,    0 , 0 ,    0, 0],
+          [0, 0,    0, 0,   0, 0,    0 , 0 ,    0, 0],
+          [0, 0,    0, 0,   1, 1,    0 , 0 ,    0, 0]]
 
 insolation2d = np.zeros([len(matrix), len(matrix[0])])
-#get insolation matrix
-for i in range (0, len(matrix)):
+
+for i in range (0, len(matrix)):# get insolation matrix
     for j in range (0, len(matrix[0])):
         var = matrix[i][j]
         try:
@@ -182,58 +82,33 @@ for i in range (0, len(matrix)):
         except KeyError:
             insolation2d[i][j] = np.nan
             
-plt.imshow(insolation2d, extent=[0, 42, 33, 0]) #sensor 
-plt.title('Model insolation map [Wh/m$^2$]')
-plt.colorbar()
+f.plot_insolation(figure = insolation2d, title = 'Sensor insolation')
 
-
-
-#%%
 #interpolation data
-# interpolation2d = np.zeros([len(matrix), len(matrix[0])])
+
 interpolation2d = pd.DataFrame(insolation2d)
+#East plate
+for i in [2, 3]:
+    aux = interpolation2d[i].loc[0:7]  
+    interpolation2d[i].loc[0:7] = aux.interpolate(method = 'linear').bfill()
 
-kernel = [[1, 1, 1],
-          [1, 1, 1],
-          [1, 1, 1]]
-
-# for i in range (0, len(matrix)):
-#     for j in range (0, len(matrix[0])):
-#         var = 0
-#         aux = 1
-#         if insolation2d[i][j] != 0:
-#             interpolation2d[i][j] = insolation2d[i][j]
-            
-#         if insolation2d[i][j] == 0:
-#             for x in range(i-1, i+1):
-#                 for y in range(j-1, j+1):
-#                     if x != 0 or y != 0:
-#                         if insolation2d[x][y] != 0:
-#                             aux += 1
-#                             var += insolation2d[x][y]
-#             interpolation2d[i][j] = var / aux
-
-#interpolation2d = scipy.signal.convolve2d(insolation2d, kernel, mode='same')
-
-#interpolation2d.interpolate(method = 'pad', limit = 2) 
-
-#pandas dataframe interpolation
-
-#vertial interpolation
-for i in [0, 1, 4, 5]:
+#North West plate
+for i in [4, 5]:
+    aux = interpolation2d[i].loc[8:15]  
+    interpolation2d[i].loc[8:15] = aux.interpolate(method = 'linear').bfill()
+    
+#South West plate
+for i in [6, 7]:
     aux = interpolation2d[i].loc[0:7]  
     interpolation2d[i].loc[0:7] = aux.interpolate(method = 'linear').bfill()
     
-
-aux = interpolation2d[3].loc[8:15]  
-interpolation2d[3].loc[8:15] = aux.interpolate(method = 'linear').bfill()
-    
+#Horizontal interpolation
 interpolation2d = interpolation2d.T
 #horizontal interpolation
 for i in range(0, 16):
     interpolation2d[i] = interpolation2d[i].interpolate(method = 'linear').bfill()
 
 interpolation2d = interpolation2d.T
-plt.imshow(interpolation2d, extent=[0, 42, 33, 0]) #sensor 
-plt.title('Model insolation map [Wh/m$^2$]')
-plt.colorbar()
+
+
+f.plot_insolation(figure = interpolation2d, title = 'Back side insolation')
