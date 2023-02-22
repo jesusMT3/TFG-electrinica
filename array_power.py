@@ -10,7 +10,11 @@ import sys
 import os
 sys.path.append(os.path.dirname(__file__))
 import myfunctions as f
+import numpy as np
+import pandas as pd
 import pvlib as pv
+from pvmismatch import *
+import matplotlib.pyplot as plt
 
 df = f.datalogger_import(f.cols)
 filtered_data = f.datalogger_filter(df = df, 
@@ -18,17 +22,58 @@ filtered_data = f.datalogger_filter(df = df,
                                     mean_coeff = 1000,
                                     irr_coef = f.irr_coef)
 
-east_plate = ['W1', 'W2', 'W3', 'W4']
-north_west = ['CH5', 'CH6', 'CH7', 'CH8']
-south_west = ['CH11', 'CH12', 'CH13', 'CH14']
+#%%
+n = 8
+m = 12
+plate1 = pd.DataFrame()
+plate_front = filtered_data['W15']
+for i in range (0, m):
+    if i == 0:
+        plate1[i] = filtered_data['W1']
+    elif i == (m / 2) - 1:
+        plate1[i] = filtered_data['W2']
+    elif i == (m / 2) + 1:
+        plate1[i] = filtered_data['W3']
+    elif i == m - 1:
+        plate1[i] = filtered_data['W4']
+    else:
+        plate1[i] = np.empty(len(filtered_data)) * np.nan
 
-height_plate = 210 #mm
-width_plate = 110 #mm
-area = height_plate*width_plate/1000 #m^2
 
-#power of East plate
-f.plot_channels(magnitude = 'Photocurrent [mA]', 
-                dataframe = filtered_data, 
-                plate = ['IL1', 'IL2', 'IL3', 'IL4'], 
-                title = 'East plate photocurrent')
+    
+plate1 = plate1.interpolate(method = 'linear', axis = 1)
 
+# plate1 = plate_back
+# for i in plate1:
+#     plate1[i] += plate_front
+
+f.plot_channels(magnitude = 'Irradiance [W/m$^2$]', dataframe = plate1, 
+                plate = plate1, 
+                title = 'East plate global Irradiance')
+#%%
+pvsys = pvsystem.PVsystem(numberStrs=1, numberMods=1)
+pmp = np.zeros(86400)
+
+name = plate1.index[50000]
+data = plate1.loc[name]
+pannel = np.zeros([m,n])
+locations = np.zeros([m,n])
+z = 0
+for i in range (0, n):
+    if i % 2 != 0:
+        z += m - 1
+    for j in range (0, m):
+        pannel[j][i] = data[j]
+        locations[j][i] = z
+        if i % 2 != 0:
+            z -= 1
+        if i % 2 == 0:
+            z += 1
+        
+
+pvsys.setSuns({0: {0: [data/1000, pannel}})
+
+power = pvsys.Pmp
+
+plt.ion()
+func =  pvsys.plotSys()
