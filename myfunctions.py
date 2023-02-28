@@ -5,7 +5,6 @@ Created on Wed Feb 15 12:49:19 2023
 @author: Jesús
 """
 
-import tkinter as tk
 from tkinter import filedialog
 import pandas as pd
 import numpy as np
@@ -21,26 +20,29 @@ cols = ["No", "DateTime", "ms", "CH1", "CH2", "CH3", "CH4", "CH5",
 irr_coef = [0.1658, 0.1638, 0.1664, 0.1678, 0.3334, 0.1686, 0.1673, inf, inf, inf, inf, 0.3306, 0.3317, 0.3341, 0.3361]
 
 def datalogger_import(cols):
-    root = tk.Tk()
+    # root = tk.Tk()
     try:
         data = filedialog.askopenfilename()
     except FileNotFoundError:
         print('Error: File not found')
-        root.destroy()
+        # root.destroy()
+        exit()
     df = pd.read_csv(data,
                      sep="\s+|,", # two types of separation
                      names = cols, # names of the columns
                      header = None, # csv file with no header, customized "cols"
                      engine = "python",
-                     skiprows = 40, # first 40 rows are datalogger specifications
+                     skiprows = 1, # first 40 rows are datalogger specifications
                      index_col = 1) #to search for specific hours in dataframe
     
     # filedialog.asksaveasfile(defaultextension = ".csv")
-    root.destroy()
+    # root.destroy()
     return df
 
 def datalogger_filter(df, filt, mean_coeff, irr_coef):
-    filtered_data = df[df.index.str.startswith(filt)].copy()
+    # filtered_data = df[df.index.str.startswith(filt)].copy()
+    # filtered_data = df.filter(like = filt, axis = 0).copy()
+    filtered_data = df.copy()
     filtered_data.index = filtered_data['DateTime']
 
     for i in range(1, 19):
@@ -54,7 +56,6 @@ def datalogger_filter(df, filt, mean_coeff, irr_coef):
     filtered_data['T_av'] = filtered_data[['T1', 'T2']].mean(axis=1) #average temperature
     alpha = 4.522e-4 # pu units
     T0  = 298.15 # STC temperature
-    R = 3.3 #Ohm
 
     for i in range(1, 19):
         # Irradiance conversion with temperature dependance
@@ -63,13 +64,6 @@ def datalogger_filter(df, filt, mean_coeff, irr_coef):
             filtered_data['W' +  str(i)] = filtered_data["CH" + str(i)] / coef
             filtered_data['W' +  str(i)] /= irr_coef[i-1]
   
-        except KeyError:
-            continue
-    for i in range(1, 19):
-        # #fotocurrent conversion
-        try:    
-            filtered_data['IL' + str(i)] = filtered_data['CH' + str(i)] / R
-            filtered_data['IL' + str(i)] = filtered_data['CH' + str(i)] / coef
         except KeyError:
             continue
         
@@ -93,7 +87,11 @@ def plot_channels(magnitude, dataframe, plate, title):
     plt.grid(True)
     
 def plot_insolation(figure, title):
-    plt.figure()            
-    plt.imshow(figure, extent=[0, 42, 33, 0]) #sensor 
+    plt.figure()
+    vmin = 0
+    vmax = np.max(figure)
+    cmap = plt.cm.get_cmap('RdYlBu')
+    cmap.set_under('red')
+    plt.imshow(figure, vmin=vmin, vmax=vmax, cmap=cmap, extent=[0, 42, 33, 0])
     plt.title(title)
     plt.colorbar()
