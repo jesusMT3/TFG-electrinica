@@ -2,6 +2,9 @@
 """
 Created on Wed Mar  1 10:21:19 2023
 
+With a CSV file filtered with csv_filter.py, the channels from the three plates
+can be plotted by executing this code
+
 @author: Jesus
 """
 

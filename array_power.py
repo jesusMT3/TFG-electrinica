@@ -1,11 +1,12 @@
-# # -*- coding: utf-8 -*-
-# """
-# Created on Mon Feb 20 10:25:10 2023
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Feb 20 10:25:10 2023
 
-# Program which calculates real power from solar module
+Program which calculates real power from solar bifacial system, based on experimental
+front and back irradiance data
 
-# @author: Jesus
-# """
+@author: Jesus
+"""
 import sys, os, time
 sys.path.append(os.path.dirname(__file__))
 import datalogger as dl
@@ -36,6 +37,7 @@ def main():
     global plate1
     global power
     global filtered_data
+    global system
 
     power = np.zeros(86400)
 
@@ -85,14 +87,14 @@ def main():
 def create_plate1_df(filtered_data, plate_front):
     plate1 = pd.DataFrame()
     for i in range (0, m):
-        if i == 0:
+        if i == 0 or i == 1:
             plate1[i] = filtered_data['W1'] + plate_front
         elif i == (m / 2) - 1:
             plate1[i] = filtered_data['W2'] + plate_front
         elif i == (m / 2) + 1:
             plate1[i] = filtered_data['W3'] + plate_front
-        elif i == m - 1:
-            plate1[i] = filtered_data['W4']/100
+        elif i == m - 1 or i == m - 2:
+            plate1[i] = filtered_data['W4'] + plate_front
         else:
             plate1[i] = np.empty(len(filtered_data)) * np.nan
     return plate1
@@ -100,7 +102,7 @@ def create_plate1_df(filtered_data, plate_front):
 def process_element(x, plate1, module, m, n):
     name = plate1.index[x]
     data = plate1.loc[name]
-    # temp_data = filtered_data['T_av'].loc[name]
+    temp_data = filtered_data['T_av'].loc[name]
     suns = np.zeros(m*n)
     z = 0
         
@@ -117,7 +119,7 @@ def process_element(x, plate1, module, m, n):
             if i % 2 == 0:
                 z += 1
     module.setSuns(suns/1000)
-    # module.setTemps(temp_data)
+    module.setTemps(temp_data + 273.15)
     power = module.Pmod.max()
     return x, power
 

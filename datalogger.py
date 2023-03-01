@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Wed Feb 15 12:49:19 2023
-
+Functions for managing data from datalogger CSV files
 @author: Jesús
 """
 
