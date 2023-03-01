@@ -8,7 +8,7 @@
 # """
 import sys, os, time
 sys.path.append(os.path.dirname(__file__))
-import myfunctions as f
+import datalogger as dl
 import numpy as np
 import pandas as pd
 from pvmismatch import PVmodule
@@ -17,6 +17,14 @@ import multiprocessing
 
 n = 8
 m = 12
+
+cols = ["No", "DateTime", "ms", "CH1", "CH2", "CH3", "CH4", "CH5", 
+        "CH6", "CH7", "CH8", "CH9", "CH11", "CH12", "CH13", "CH14", 
+        "CH15", "T1", "T2", "GS1", "GS2", "GS3", "GS4", "Alarm1", 
+        "Alarm2", "Alarm3", "AlarmOut"] # columns in which the data from data is organised
+
+# Irradiance conversion coefficients
+irr_coef = [0.1658, 0.1638, 0.1664, 0.1678, 0.3334, 0.1686, 0.1673, np.inf, np.inf, np.inf, np.inf, 0.3306, 0.3317, 0.3341, 0.3361]
 
 module = PVmodule()
 plate1 = None
@@ -31,16 +39,16 @@ def main():
 
     power = np.zeros(86400)
 
-    filtered_data = f.datalogger_filter(df = f.datalogger_import(f.cols), 
+    filtered_data = dl.datalogger_filter(df = dl.datalogger_import(cols), 
                                         filt = None, 
                                         mean_coeff = 1000, 
-                                        irr_coef = f.irr_coef)
+                                        irr_coef = irr_coef)
 
     plate_front = filtered_data['W15']
     plate1 = create_plate1_df(filtered_data, plate_front).interpolate(method = 'linear', axis = 1)
     plate1['Mean'] = plate1.mean(axis = 1)
 
-    f.plot_channels(magnitude = 'Irradiance [W/m$^2$]', 
+    dl.plot_channels(magnitude = 'Irradiance [W/m$^2$]', 
                     dataframe = plate1, 
                     plate = plate1, 
                     title = 'East plate global Irradiance')
@@ -160,7 +168,7 @@ def iv_irr_data(hour):
     plt.tight_layout()
     plt.show()
          
-    f.plot_insolation(figure=insolations, title='Irradiance at ' + hour)
+    dl.plot_insolation(figure=insolations, title='Irradiance at ' + hour)
     
     print('Power at ', hour, ': ', power)
 

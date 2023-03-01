@@ -75,7 +75,7 @@ def smooth(y, box_pts):
     y_smooth = np.convolve(y, box, mode='same')
     return y_smooth
 
-def plot_channels(magnitude, dataframe, plate, title):
+def plot_channels(magnitude, dataframe, plate, title, ax = None):
     plt.figure()
     for i in plate:
         dataframe[i].plot()
