@@ -50,7 +50,7 @@ def datalogger_filter(df, filt, mean_coeff, irr_coef):
             aux_str = "CH" + str(i)
             filtered_data[aux_str] = smooth(filtered_data[aux_str], 1000)
         except KeyError:
-            print("Channel ",i ," does not exist")
+            # print("Channel ",i ," does not exist")
             continue
             
     filtered_data['T_av'] = filtered_data[['T1', 'T2']].mean(axis=1) #average temperature
