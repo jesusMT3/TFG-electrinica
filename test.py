@@ -24,6 +24,7 @@ east = [('W1', 'W2', 'W3', 'W4'), ('W15')]
 north_west = [('W5', 'W6', 'W7', 'W8'), ('W15')]
 south_west = [('W11', 'W12', 'W13', 'W14'), ('W15')]
 
+
 def main():
     
     global filtered_data
@@ -41,23 +42,6 @@ def main():
     north_west_plate = create_plate(channels = north_west, data = filtered_data)
     south_west_plate = create_plate(channels = south_west, data = filtered_data)
     
-    hour = '14:00:00'
-    
-    east_irr = module_irr(n, m, data = east_plate.loc[hour])
-    north_west_irr = module_irr(n, m, data = north_west_plate.loc[hour])
-    south_west_irr = module_irr(n, m, data = south_west_plate.loc[hour])
-
-    Ee = {0: {0: south_west_irr / 1000,
-              1: south_west_irr / 1000,
-              2: (north_west_irr + south_west_irr) / (2 * 1000),
-              3: north_west_irr / 1000,
-              4: north_west_irr / 1000,
-              5: east_irr / 1000,
-              6: east_irr / 1000,
-              7: east_irr / 1000,
-              8: east_irr / 1000,
-              9: east_irr / 1000}}
-    
     # create a cell with custom parameters
     cell = pvm.PVcell(**cell_params)
 
@@ -66,12 +50,16 @@ def main():
     
     system = pvm.PVsystem(numberStrs=1, numberMods=10, pvmods=module)
 
-    system.setSuns(Ee)
-    system.plotSys()
-    power = system.Pmp
+    x, power = process_element(x = 50000, 
+                               east_plate = east_plate, 
+                               north_west_plate = north_west_plate, 
+                               south_west_plate = south_west_plate, 
+                               m = m, n = n, 
+                               system = system)
+    
     print(power)
     
-    print_plate(east_plate, north_west_plate, south_west_plate, hour)
+    print_plate(east_plate, north_west_plate, south_west_plate, '14:00:00', system)
 
 # gets the array based on series configuration of cells
 def module_irr(n, m, data):
@@ -115,7 +103,10 @@ def create_plate(channels, data):
     return plate_interpolated
 
 #prints the irradiation map of the hour
-def print_plate(east_plate, north_west_plate, south_west_plate, hour):
+def print_plate(east_plate, north_west_plate, south_west_plate, hour, system):
+    
+    system.plotSys()
+    
     array = np.zeros([m*2, 5])
     for i in range(0, m):
         array[i][0] = north_west_plate[i].loc[hour]
@@ -130,5 +121,30 @@ def print_plate(east_plate, north_west_plate, south_west_plate, hour):
         
     dl.plot_insolation(figure = array, title = 'Irradiation map at '+ hour)
     
+def process_element(x, east_plate, north_west_plate, south_west_plate, m, n, system):
+    
+    hour = filtered_data.index[x]
+    temp = filtered_data['T_av'].loc[hour]
+    
+    east_irr = module_irr(n, m, data = east_plate.loc[east_plate.index[x]])
+    north_west_irr = module_irr(n, m, data = north_west_plate.loc[north_west_plate.index[x]])
+    south_west_irr = module_irr(n, m, data = south_west_plate.loc[south_west_plate.index[x]])
+    
+    Ee = {0: {0: south_west_irr / 1000,
+              1: south_west_irr / 1000,
+              2: (north_west_irr + south_west_irr) / (2 * 1000),
+              3: north_west_irr / 1000,
+              4: north_west_irr / 1000,
+              5: east_irr / 1000,
+              6: east_irr / 1000,
+              7: east_irr / 1000,
+              8: east_irr / 1000,
+              9: east_irr / 1000}}
+    
+    system.setSuns(Ee)
+    system.setTemps(temp + 273.15)
+    power = system.Pmp
+    return x, power
+
 if __name__ == "__main__":
     main()
