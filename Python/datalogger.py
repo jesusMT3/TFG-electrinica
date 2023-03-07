@@ -16,6 +16,12 @@ cols = ["No", "DateTime", "ms", "CH1", "CH2", "CH3", "CH4", "CH5",
         "CH15", "T1", "T2", "GS1", "GS2", "GS3", "GS4", "Alarm1", 
         "Alarm2", "Alarm3", "AlarmOut"] # columns in which the data from data is organised
 
+cols2 = ['yyyy/mm/dd hh:mm','Temp. Ai 1','Bn','Gh','Dh','Celula Top','Celula Mid','Celula Bot',
+         'Top - Cal' ,'Mid - Cal' ,'Bot - Cal','Presion','V.Vien.1','D.Vien.1','Elev.Sol',
+         'Orient.Sol','Temp. Ai 2','Hum. Rel','Bn_2','G(41)','Gn','Pirgeo','Temp_Pirgeo',
+         'Auxil.01','V.Vien.2','D.Vien.2','Lluvia','Limpieza','Elev.Sol_2','Orient.Sol_2'
+]
+
 # Irradiance conversion coefficients
 irr_coef = [0.1658, 0.1638, 0.1664, 0.1678, 0.3334, 0.1686, 0.1673, inf, inf, inf, inf, 0.3306, 0.3317, 0.3341, 0.3361]
 
@@ -37,6 +43,23 @@ def datalogger_import(cols):
     
     # filedialog.asksaveasfile(defaultextension = ".csv")
     # root.destroy()
+    return df
+
+def meteodata_import(cols):
+    try:
+        data = filedialog.askopenfilename()
+    except FileNotFoundError:
+        print('Error: File not found')
+        # root.destroy()
+        exit()
+    df = pd.read_csv(data,
+                     sep="\t", # two types of separation
+                     names = cols, # names of the columns
+                     header = None, # csv file with no header, customized "cols"
+                     engine = "python",
+                     skiprows = 1, # first 40 rows are datalogger specifications
+                     index_col = 1) #to search for specific hours in dataframe
+    
     return df
 
 def datalogger_filter(df, filt, mean_coeff, irr_coef):
@@ -75,12 +98,12 @@ def smooth(y, box_pts):
     y_smooth = np.convolve(y, box, mode='same')
     return y_smooth
 
-def plot_channels(magnitude, dataframe, plate, title, ax = None):
+def plot_channels(magnitude, dataframe, plate, title, ax = None, xaxis = 'Date Time'):
     plt.figure()
     for i in plate:
         dataframe[i].plot()
         
-    plt.xlabel('Date Time')
+    plt.xlabel(xaxis)
     plt.ylabel(magnitude)
     plt.title(title)
     plt.legend()
