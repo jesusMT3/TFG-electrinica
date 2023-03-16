@@ -5,13 +5,14 @@ Created on Wed Mar  1 12:16:05 2023
 @author: Jesus
 """
 
-import sys, os
+import sys, os, time
 sys.path.append(os.path.dirname(__file__))
 import pvmismatch as pvm
 import numpy as np
 import datalogger as dl
 import pandas as pd
 import matplotlib.pyplot as plt
+import multiprocessing
 
 cell_params = {
     'Rs': 0.01,
@@ -23,7 +24,7 @@ m = 12
 east = [('W1', 'W2', 'W3', 'W4'), ('W15')]
 north_west = [('W5', 'W6', 'W7', 'W8'), ('W15')]
 south_west = [('W11', 'W12', 'W13', 'W14'), ('W15')]
-
+model_power = np.zeros(86400)
 
 def main():
     
@@ -31,6 +32,7 @@ def main():
     global cell
     global module
     global system
+    global model_power
     
     # import and filter data
     filtered_data = dl.datalogger_filter(df = dl.datalogger_import(dl.cols), 
@@ -50,14 +52,20 @@ def main():
     
     system = pvm.PVsystem(numberStrs=1, numberMods=10, pvmods=module)
 
-    x, power = process_element(x = 50000, 
+    start_time = time.time()
+    for i in range (50000, 50100):
+        x, power = process_element(i, 
                                east_plate = east_plate, 
                                north_west_plate = north_west_plate, 
                                south_west_plate = south_west_plate, 
                                m = m, n = n, 
                                system = system)
-    
-    print(power)
+        
+        model_power[i] = power
+        
+    end_time = time.time()
+    processing_time = end_time - start_time
+    print(f"Processing time: {processing_time:.4f} seconds")
     
     print_plate(east_plate, north_west_plate, south_west_plate, '14:00:00', system)
 

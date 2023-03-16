@@ -25,24 +25,20 @@ cols2 = ['yyyy/mm/dd hh:mm','Temp. Ai 1','Bn','Gh','Dh','Celula Top','Celula Mid
 # Irradiance conversion coefficients
 irr_coef = [0.1658, 0.1638, 0.1664, 0.1678, 0.3334, 0.1686, 0.1673, inf, inf, inf, inf, 0.3306, 0.3317, 0.3341, 0.3361]
 
-def datalogger_import(cols):
-    # root = tk.Tk()
+def datalogger_import():
+
     try:
         data = filedialog.askopenfilename()
     except FileNotFoundError:
         print('Error: File not found')
-        # root.destroy()
-        exit()
+
     df = pd.read_csv(data,
                      sep="\s+|,", # two types of separation
-                     names = cols, # names of the columns
-                     header = None, # csv file with no header, customized "cols"
+                     header = 0, # csv file with no header, customized "cols"
                      engine = "python",
-                     skiprows = 1, # first 40 rows are datalogger specifications
+                     skiprows = 1, # skip index
                      index_col = 1) #to search for specific hours in dataframe
     
-    # filedialog.asksaveasfile(defaultextension = ".csv")
-    # root.destroy()
     return df
 
 def meteodata_import(cols):
@@ -60,6 +56,34 @@ def meteodata_import(cols):
                      skiprows = 1, # first 40 rows are datalogger specifications
                      index_col = 1) #to search for specific hours in dataframe
     
+    return df
+
+def data_import(type):
+
+    try:
+        data = filedialog.askopenfilename()
+    except FileNotFoundError:
+        print('Error: File not found')
+    
+    if type == 'datalogger':
+        df = pd.read_csv(data,
+                         sep=",", # two types of separation
+                         header = 0, # first row used as index
+                         skiprows = 0, # skip index
+                         engine = 'python',
+                         index_col = 1,
+                         parse_dates = True,
+                         dayfirst = False) #to search for specific hours in dataframe
+    
+    elif type == 'meteodata':
+        df = pd.read_csv(data,
+                        sep="\t", # two types of separation
+                        header = 0, # csv file with no header, customized "cols"
+                        engine = "python",
+                        skiprows = 0, # first 40 rows are datalogger specifications
+                        index_col = 0,
+                        parse_dates = True,
+                        dayfirst = False) #to search for specific hours in dataframe
     return df
 
 def datalogger_filter(df, filt, mean_coeff, irr_coef):
