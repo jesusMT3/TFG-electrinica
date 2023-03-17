@@ -11,6 +11,8 @@ sys.path.append(os.path.dirname(__file__))
 import datalogger as dl
 import pandas as pd
 import scipy
+import matplotlib.pyplot as plt
+import numpy as np
 
 df = pd.DataFrame()
 
@@ -28,7 +30,7 @@ def main():
     meteodata = dl.data_import('meteodata')
     
     # if datalogger data is in seconds, uncomment this line
-    # datalogger_data = datalogger_data.resample('T').mean()
+    datalogger_data = datalogger_data.resample('T').mean()
     
     # create dataframe with requested data
     for i in plate:
@@ -45,16 +47,29 @@ def main():
         df[i] /= (1 + alpha * (df['Temp'] - T0))
         
     # rearrange index to GHI for the plotting
-    df.index = df['GHI']
-    
-    dl.plot_channels(magnitude = 'Vshunt[V]', dataframe = df, 
-                      plate = plate, title = 'Callibration data', xaxis = 'Irradiance [W/m$^2$]')
-    
-    #linear regression to obtain coefficients
-    for i in plate:
+    df.index = df['GHI'] 
         
-        coefficients = scipy.stats.linregress(df['GHI'], df[i])
-        print('coefficient:' ,coefficients[0],'Error:', coefficients[4]*100, '%')
+    for i in plate:
+        plt.figure()
+        
+        #scatter data
+        plt.scatter(df.index, df[i], label = i)
+        
+        # get linear regress coefficients
+        x = df['GHI'].to_numpy()
+        y = df[i].to_numpy()
+        coefficients = scipy.stats.linregress(x, y)
+        
+        # plot linear regress curve
+        plt.plot(x, coefficients[0] * x + coefficients[1], color='red', label = 'Regression line')
+        plt.legend()
+        plt.title('Channel ' + i)
+        plt.xlabel('Global Horizontal Irradiance [W/m$^2$]')
+        plt.ylabel('Vshunt [mV]')
+        
+        #print coefficients
+        print(i, 'k:' ,coefficients[0],'e:', coefficients[4]*100, '%')
+    
   
 if __name__ == "__main__":
     main()
