@@ -37,14 +37,14 @@ irr_coef = [0.1658, 0.1638, 0.1664, 0.1678, 0.3334, 0.1686, 0.1673, inf, inf, in
 # CH7 k: 0.17458960210590382 e: 0.1724198341191964 %
 # CH8 k: 0.17420980373454822 e: 0.18627879789009513 %
 
-irr_coef = [0.16376998993738387,
-            0.17217574947097974,
-            0.16967647439837394,
-            0.17110093773794854,
-            0.16969442561377246,
-            0.16663505991416955,
-            0.17458960210590382,
-            0.17420980373454822]
+# irr_coef = [0.16376998993738387,
+#             0.17217574947097974,
+#             0.16967647439837394,
+#             0.17110093773794854,
+#             0.16969442561377246,
+#             0.16663505991416955,
+#             0.17458960210590382,
+#             0.17420980373454822]
 
 def datalogger_import():
 
@@ -107,11 +107,9 @@ def data_import(type):
                         dayfirst = False) #to search for specific hours in dataframe
     return df
 
-def datalogger_filter(df, filt, mean_coeff, irr_coef):
-    # filtered_data = df[df.index.str.startswith(filt)].copy()
-    # filtered_data = df.filter(like = filt, axis = 0).copy()
+def datalogger_filter(df, mean_coeff, irr_coef, ch_temp):
+
     filtered_data = df.copy()
-    filtered_data.index = filtered_data['DateTime']
 
     for i in range(1, 19):
         try:
@@ -121,14 +119,14 @@ def datalogger_filter(df, filt, mean_coeff, irr_coef):
             # print("Channel ",i ," does not exist")
             continue
             
-    filtered_data['T_av'] = filtered_data[['T1', 'T2']].mean(axis=1) #average temperature
+    # filtered_data['T_av'] = filtered_data[['T1', 'T2']].mean(axis=1) #average temperature
     alpha = 4.522e-4 # pu units
     T0  = 298.15 # STC temperature
 
     for i in range(1, 19):
         # Irradiance conversion with temperature dependance
         try:
-            coef = 1 + alpha * ((filtered_data['T_av'] + 273.15)- T0)
+            coef = 1 + alpha * ((filtered_data['ch_temp'] + 273.15)- T0)
             filtered_data['W' +  str(i)] = filtered_data["CH" + str(i)] / coef
             filtered_data['W' +  str(i)] /= irr_coef[i-1]
   
