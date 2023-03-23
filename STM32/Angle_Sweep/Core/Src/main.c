@@ -35,10 +35,41 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-volatile int estado = 0;
+volatile int state = 0;
+/*
+ * 0: Pre-homing state
+ * 1: Normal function
+ * 2: Exception. FC1 interruption mode
+ * 3: Exception. FC2 interruption mode
+ * */
+volatile int sweep = 1;
+/*
+ * 0: No sweep
+ * 1: Sweep
+ * */
+volatile float angle = 0; //value of the angle the motor has to be at any time
+volatile float step = 0;
+/*
+ * 0: No step
+ * 1: Step
+ * */
+
+volatile float direction = 1;
+/*
+ * 1: Increment
+ *-1: Decrement*/
+
+volatile int counter = 0;
+//Constants
+float max_angle = 55; //max sweeping angle
+float min_angle = -55; //min sweeping angle
+float FC1_angle = -62;
+float FC2_angle = 60;
+float increment = 0.5;
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
 
@@ -47,10 +78,14 @@ volatile int estado = 0;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
-void sweep();
+
 void FC1_Handler();
 void FC2_Handler();
+void motor_sweep(int direction);
+void motor_step(int amount);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -74,26 +109,30 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+  MX_GPIO_Init();
+  MX_TIM2_Init();
   /* USER CODE END Init */
 
   /* Configure the system clock */
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-  estado = 0;
+  state = 0;
+  HAL_TIM_Base_Start_IT(&htim2);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
+    while (1)
   {
+    	motor_sweep(direction);
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -133,13 +172,58 @@ void SystemClock_Config(void)
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 16000;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 100;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+
 }
 
 /**
@@ -194,18 +278,15 @@ static void MX_GPIO_Init(void)
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 
 	if (GPIO_Pin == GPIO_PIN_13){
-		HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-		estado = 3; //mannual calibration interrupt pressed
+		state = 1;
 	}
 
 	else if (GPIO_Pin == GPIO_PIN_1){
-		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, RESET); //stop motor
-		estado = 1; // Security interrupt pressed
+		FC1_Handler();
 	}
 
 	else if (GPIO_Pin == GPIO_PIN_2){
-		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, RESET); //stop motor
-		estado = 2; //calibration interrupt pressed
+		FC2_Handler();
 	}
 
 	else{
@@ -213,37 +294,54 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	}
 }
 
-// Sweeps between -55º and 55º whenever the timer is activated
-void sweep(){
-
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, SET);
-	HAL_Delay(1000);
-
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, RESET);
-	HAL_Delay(1000);
-
-}
-
 // What to do if the security interrupt is pressed
 void FC1_Handler(){
-	for (int i = 0; i < 5; i++){
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, SET);
-			HAL_Delay(100);
 
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, RESET);
-			HAL_Delay(100);
-		}
+	state = 2;
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, SET); //stop motor
 }
 
 // What to do if the calibration interrupt is pressed
 void FC2_Handler(){
-	for (int i = 0; i < 10; i++){
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, SET);
-			HAL_Delay(50);
 
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, RESET);
-			HAL_Delay(50);
+	state = 3;
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, SET); //stop motor
+}
+
+//sweeping function
+void motor_sweep(int direction){
+	if (sweep == 1){
+		if (angle >= min_angle && angle <= max_angle){
+			motor_step(increment);
 		}
+		else {
+			sweep = 0;
+		}
+	}
+}
+
+void motor_step(int amount){
+	if (step == 1){
+		HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+		step = 0;
+		angle += amount;
+		counter++;
+	}
+}
+
+// Timer interruptions handler
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
+
+	//Step timer
+	if (htim == &htim2){
+	  step = 1;
+
+	  if (counter >= 50){
+		  sweep = 1;
+		  counter = 0;
+	  }
+	}
+
 }
 /* USER CODE END 4 */
 

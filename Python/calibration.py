@@ -18,9 +18,11 @@ df = pd.DataFrame()
 
 plate = ['CH1', 'CH2', 'CH3', 'CH4', 'CH5', 'CH6', 'CH7', 'CH8']
 # plate = ['CH1']
+plate = ['CH1', 'CH2', 'CH3', 'CH4']
 
 def main():
     global df
+    global datalogger_data
     
     # Import data from datalogger and meteodata station
     datalogger_data = dl.data_import('datalogger')
@@ -46,8 +48,7 @@ def main():
     # Rearrange index to GHI for the plotting
     df.index = df['GHI'] 
         
-    for i in plate:
-        
+    for i in plate:   
         
         # Get linear regress coefficients
         x = df['GHI'].to_numpy()
