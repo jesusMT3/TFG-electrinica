@@ -150,15 +150,10 @@ int main(void)
     	case 2: // Security FC pressed
     	    angle = FC1_angle;
 
-    	    //motor moving to minimum angle
-    	    angle = max_angle;
 			break;
     	case 3: // Calibration FC pressed
 			angle = FC2_angle;
 
-			//motor moving to minimum angle
-			angle = min_angle;
-			state = 1;
 			break;
     	}
     /* USER CODE END WHILE */
@@ -307,6 +302,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 
 	if (GPIO_Pin == GPIO_PIN_13){
 		state = 1;
+		angle = 0;
 	}
 
 	else if (GPIO_Pin == GPIO_PIN_1){
