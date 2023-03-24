@@ -48,24 +48,32 @@ volatile int sweep = 1;
  * 1: Sweep
  * */
 volatile float angle = 0; //value of the angle the motor has to be at any time
-volatile float step = 0;
+volatile int step = 0;
 /*
  * 0: No step
  * 1: Step
  * */
 
-volatile float direction = 1;
+volatile int direction = 1;
 /*
  * 1: Increment
  *-1: Decrement*/
 
+//counter for the sweeping mode
 volatile int counter = 0;
-//Constants
-float max_angle = 55; //max sweeping angle
-float min_angle = -55; //min sweeping angle
+
+// Angle constants
+float max_angle = 20; //max sweeping angle
+float min_angle = -20; //min sweeping angle
 float FC1_angle = -62;
 float FC2_angle = 60;
 float increment = 0.5;
+
+// Time constants
+
+int step_time = 100; //ms
+int sweep_time = 20*1000; //ms (s*1000)
+
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -83,8 +91,8 @@ static void MX_TIM2_Init(void);
 
 void FC1_Handler();
 void FC2_Handler();
-void motor_sweep(int direction);
-void motor_step(int amount);
+void motor_sweep();
+void motor_step();
 
 /* USER CODE END PFP */
 
@@ -131,8 +139,28 @@ int main(void)
   /* USER CODE BEGIN WHILE */
     while (1)
   {
-    	motor_sweep(direction);
+    	switch (state){
+    	case 0: // Pre-homing state (initial state)
+    		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, SET); //move motor to calibration spot
 
+    		break;
+    	case 1: // Normal behaviour
+    		motor_sweep();
+			break;
+    	case 2: // Security FC pressed
+    	    angle = FC1_angle;
+
+    	    //motor moving to minimum angle
+    	    angle = max_angle;
+			break;
+    	case 3: // Calibration FC pressed
+			angle = FC2_angle;
+
+			//motor moving to minimum angle
+			angle = min_angle;
+			state = 1;
+			break;
+    	}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -202,7 +230,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 16000;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 100;
+  htim2.Init.Period = step_time;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -309,23 +337,28 @@ void FC2_Handler(){
 }
 
 //sweeping function
-void motor_sweep(int direction){
+void motor_sweep(){
 	if (sweep == 1){
-		if (angle >= min_angle && angle <= max_angle){
-			motor_step(increment);
-		}
-		else {
-			sweep = 0;
-		}
+		motor_step();
 	}
 }
 
-void motor_step(int amount){
+void motor_step(){
 	if (step == 1){
+
 		HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
 		step = 0;
-		angle += amount;
-		counter++;
+
+		angle += increment*direction;
+
+		if (angle >= max_angle){
+			sweep = 0;
+			direction = -1;
+			}
+		else if (angle <= min_angle){
+			sweep = 0;
+			direction = 1;
+		}
 	}
 }
 
@@ -335,8 +368,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	//Step timer
 	if (htim == &htim2){
 	  step = 1;
+	  counter++;
 
-	  if (counter >= 50){
+	  if (counter >= (sweep_time / step_time)){
 		  sweep = 1;
 		  counter = 0;
 	  }
