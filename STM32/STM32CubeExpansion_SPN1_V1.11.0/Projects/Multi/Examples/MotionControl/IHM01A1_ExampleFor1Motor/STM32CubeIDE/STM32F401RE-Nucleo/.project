@@ -134,7 +134,7 @@
 		<link>
 			<name>Example/User/clock_f4.c</name>
 			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/Src/clock_f4.c</locationURI>
+			<location>C:/Users/Jesus/Documents/GitHub/TFG-electronica/STM32/STM32CubeExpansion_SPN1_V1.11.0/Projects/Multi/Examples/MotionControl/IHM01A1_ExampleFor1Motor/Src/clock_f4.c</location>
 		</link>
 		<link>
 			<name>Example/User/main.c</name>
