@@ -16,6 +16,7 @@ import numpy as np
 from datetime import timedelta
 
 df = pd.DataFrame()
+change_hour = False
 
 # plate = ['CH1', 'CH2', 'CH3', 'CH4', 'CH5', 'CH6', 'CH7', 'CH8']
 plate = ['CH1', 'CH2', 'CH3', 'CH4']
@@ -31,7 +32,8 @@ def main():
     meteodata = dl.data_import('meteodata')
     
     # Change of hour?
-    datalogger_data.index += timedelta(hours=1)
+    if change_hour == True:
+        datalogger_data.index += timedelta(hours=1)
     
     # If datalogger data is in seconds, uncomment this line
     datalogger_data = datalogger_data.resample('T').mean()
@@ -77,11 +79,11 @@ def main():
         x = df['GHI'].to_numpy()
         y = df[i].to_numpy()
         
-        # Clean NaN data
+        # # Clean NaN data
         finiteYmask = np.isfinite(y)
         Yclean = y[finiteYmask]
         Xclean = x[finiteYmask]
-        coefficients = scipy.stats.linregress(Xclean, Yclean)
+        # coefficients = scipy.stats.linregress(Xclean, Yclean)
         
         # Plottings
         fig, axs = plt.subplots(2, 1, figsize=(8, 8))
