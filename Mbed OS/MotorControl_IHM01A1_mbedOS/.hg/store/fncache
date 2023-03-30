@@ -1,0 +1,4 @@
+data/mbed-os.lib.i
+data/mbed.bld.i
+data/X_NUCLEO_IHM01A1.lib.i
+data/main.cpp.i
