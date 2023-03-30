@@ -16,7 +16,7 @@ import numpy as np
 from datetime import timedelta
 
 df = pd.DataFrame()
-change_hour = False
+change_hour = True
 
 # plate = ['CH1', 'CH2', 'CH3', 'CH4', 'CH5', 'CH6', 'CH7', 'CH8']
 plate = ['CH1', 'CH2', 'CH3', 'CH4']
@@ -67,11 +67,11 @@ def main():
         coefficients = scipy.stats.linregress(x, y)
         
         # Eliminate outliers
-        # calc = df['GHI'] * coefficients[0] + coefficients[1]
-        # df['error ' + i] = ((df[i] - calc) / calc)*100
-        # for j in df.index:
-        #     if df['error ' + i].loc[j] > 1 or df['error ' + i].loc[j] < -1:
-        #         df[i].loc[j] = np.nan
+        calc = df['GHI'] * coefficients[0] + coefficients[1]
+        df['error ' + i] = ((df[i] - calc) / calc)*100
+        for j in df.index:
+            if df['error ' + i].loc[j] > 1 or df['error ' + i].loc[j] < -1:
+                df[i].loc[j] = np.nan
                 
         
         
@@ -83,7 +83,7 @@ def main():
         finiteYmask = np.isfinite(y)
         Yclean = y[finiteYmask]
         Xclean = x[finiteYmask]
-        # coefficients = scipy.stats.linregress(Xclean, Yclean)
+        coefficients = scipy.stats.linregress(Xclean, Yclean)
         
         # Plottings
         fig, axs = plt.subplots(2, 1, figsize=(8, 8))
@@ -95,6 +95,8 @@ def main():
         axs[0].set_title('Channel ' + i)
         axs[0].set_xlabel('Global Horizontal Irradiance [W/m$^2$]')
         axs[0].set_ylabel('Vshunt [mV]')
+        axs[0].set_ylim(0, 200)
+        axs[0].set_xlim(0, 1000)
         
         # Temperature plot
         axs[1].scatter(df['Temp'], df['k ' + i], label = 'k ' + i)
@@ -107,7 +109,7 @@ def main():
         plt.tight_layout()
         
         #print coefficients
-        print(f'{i}: V(G) = {coefficients[0]} * G + {coefficients[1]}. Error: {coefficients[4]*100}%')
+        print(f'{i}', ": V(G) = {:.4f} * G + {:.4f}. Error: {:.4f} %".format(round(coefficients[0], 4), round(coefficients[1], 4), round(coefficients[4], 4)))
   
 if __name__ == "__main__":
     main()
