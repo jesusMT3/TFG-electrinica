@@ -16,7 +16,7 @@ import numpy as np
 from datetime import timedelta
 
 df = pd.DataFrame()
-change_hour = True
+change_hour = False
 
 # plate = ['CH1', 'CH2', 'CH3', 'CH4', 'CH5', 'CH6', 'CH7', 'CH8']
 plate = ['CH1', 'CH2', 'CH3', 'CH4']
@@ -95,8 +95,6 @@ def main():
         axs[0].set_title('Channel ' + i)
         axs[0].set_xlabel('Global Horizontal Irradiance [W/m$^2$]')
         axs[0].set_ylabel('Vshunt [mV]')
-        axs[0].set_ylim(0, 200)
-        axs[0].set_xlim(0, 1000)
         
         # Temperature plot
         axs[1].scatter(df['Temp'], df['k ' + i], label = 'k ' + i)
