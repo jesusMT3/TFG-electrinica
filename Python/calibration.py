@@ -16,7 +16,7 @@ import numpy as np
 from datetime import timedelta
 
 df = pd.DataFrame()
-change_hour = False
+change_hour = True
 
 # plate = ['CH1', 'CH2', 'CH3', 'CH4', 'CH5', 'CH6', 'CH7', 'CH8']
 plate = ['CH1', 'CH2', 'CH3', 'CH4']
