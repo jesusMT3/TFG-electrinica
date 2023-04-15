@@ -126,7 +126,7 @@ def datalogger_filter(df, mean_coeff, irr_coef, ch_temp):
     for i in range(1, 19):
         # Irradiance conversion with temperature dependance
         try:
-            coef = 1 + alpha * ((filtered_data['ch_temp'] + 273.15)- T0)
+            coef = 1 + alpha * ((filtered_data[ch_temp] + 273.15)- T0)
             filtered_data['W' +  str(i)] = filtered_data["CH" + str(i)] / coef
             filtered_data['W' +  str(i)] /= irr_coef[i-1]
   

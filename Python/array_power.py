@@ -41,10 +41,11 @@ def main():
 
     power = np.zeros(86400)
 
-    filtered_data = dl.datalogger_filter(df = dl.datalogger_import(cols), 
-                                        filt = None, 
-                                        mean_coeff = 1000, 
-                                        irr_coef = irr_coef)
+    data = dl.data_import('datalogger')
+    filtered_data = dl.datalogger_filter(df = data,
+                                      mean_coeff = 1000, 
+                                      irr_coef = irr_coef, 
+                                      ch_temp = 'CH19')
 
     plate_front = filtered_data['W15']
     plate1 = create_plate1_df(filtered_data, plate_front).interpolate(method = 'linear', axis = 1)
