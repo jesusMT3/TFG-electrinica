@@ -1,0 +1,4 @@
+^BUILD$
+^.mbed$
+^X_NUCLEO_IHM01A1$
+^mbed-os$

@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 inf = np.inf
 import matplotlib.pyplot as plt
+import datetime
 
 cols = ["No", "DateTime", "ms", "CH1", "CH2", "CH3", "CH4", "CH5", 
         "CH6", "CH7", "CH8", "CH9", "CH11", "CH12", "CH13", "CH14", 
@@ -25,26 +26,54 @@ cols2 = ['yyyy/mm/dd hh:mm','Temp. Ai 1','Bn','Gh','Dh','Celula Top','Celula Mid
 # Irradiance conversion coefficients
 irr_coef = [0.1658, 0.1638, 0.1664, 0.1678, 0.3334, 0.1686, 0.1673, inf, inf, inf, inf, 0.3306, 0.3317, 0.3341, 0.3361]
 
-# new irradiance coefficients
+# Irradiance coefficients
 
 #from callibration.py results
-# CH1 k: 0.16376998993738387 e: 0.17136001056480832 %
-# CH2 k: 0.17217574947097974 e: 0.16391185983716314 %
-# CH3 k: 0.16967647439837394 e: 0.1712967192478474 %
-# CH4 k: 0.17110093773794854 e: 0.17327458986705052 %
-# CH5 k: 0.16969442561377246 e: 0.17763129265227134 %
-# CH6 k: 0.16663505991416955 e: 0.1787209978431854 %
-# CH7 k: 0.17458960210590382 e: 0.1724198341191964 %
-# CH8 k: 0.17420980373454822 e: 0.18627879789009513 %
 
-# irr_coef = [0.16376998993738387,
-#             0.17217574947097974,
-#             0.16967647439837394,
-#             0.17110093773794854,
-#             0.16969442561377246,
-#             0.16663505991416955,
-#             0.17458960210590382,
-#             0.17420980373454822]
+#Back East Plate
+
+# CH1 : V(G) = 0.1638 * G + -0.1211. Error: 0.0017 %
+# CH2 : V(G) = 0.1722 * G + -4.9881. Error: 0.0016 %
+# CH3 : V(G) = 0.1697 * G + -4.7884. Error: 0.0017 %
+# CH4 : V(G) = 0.1711 * G + -4.2813. Error: 0.0017 %
+
+#Back West Plate
+
+# CH5 : V(G) = 0.1697 * G + -4.3242. Error: 0.0018 %
+# CH6 : V(G) = 0.1666 * G + -2.6391. Error: 0.0018 %
+# CH7 : V(G) = 0.1746 * G + -7.6349. Error: 0.0017 %
+# CH8 : V(G) = 0.1742 * G + -6.4095. Error: 0.0019 %
+
+#Front East Plate
+
+# CH1 : V(G) = 0.1517 * G + 15.4513. Error: 0.0009 %
+# CH2 : V(G) = 0.1529 * G + 14.0024. Error: 0.0008 %
+# CH3 : V(G) = 0.1502 * G + 15.8254. Error: 0.0009 %
+# CH4 : V(G) = 0.1560 * G + 13.8041. Error: 0.0009 %
+
+# Front West Plate
+
+# CH1 : V(G) = 0.1644 * G + 1.8121. Error: 0.0004 %
+# CH2 : V(G) = 0.1644 * G + 0.9638. Error: 0.0004 %
+# CH3 : V(G) = 0.1617 * G + 1.4087. Error: 0.0004 %
+# CH4 : V(G) = 0.1636 * G + 3.0349. Error: 0.0004 %
+
+irr_coef = [0.1638,
+            0.1722,
+            0.1697,
+            0.1711,
+            0.1697,
+            0.1666,
+            0.1746,
+            0.1742,
+            0.1517,
+            0.1529,
+            0.1502,
+            0.1560,
+            0.1644,
+            0.1644,
+            0.1617,
+            0.1636]
 
 def datalogger_import():
 
@@ -92,9 +121,7 @@ def data_import(type):
                          header = 0, # first row used as index
                          skiprows = 0, # skip index
                          engine = 'python',
-                         index_col = 1,
-                         parse_dates = True,
-                         dayfirst = False) #to search for specific hours in dataframe
+                         index_col = 1) 
     
     elif type == 'meteodata':
         df = pd.read_csv(data,
@@ -102,9 +129,9 @@ def data_import(type):
                         header = 0, # csv file with no header, customized "cols"
                         engine = "python",
                         skiprows = 0, # first 40 rows are datalogger specifications
-                        index_col = 0,
-                        parse_dates = True,
-                        dayfirst = False) #to search for specific hours in dataframe
+                        index_col = 0)     
+        
+    df.index = pd.to_datetime(df.index)
     return df
 
 def datalogger_filter(df, mean_coeff, irr_coef, ch_temp):
@@ -132,7 +159,10 @@ def datalogger_filter(df, mean_coeff, irr_coef, ch_temp):
   
         except KeyError:
             continue
-        
+    
+    #if there was a hour change (e.g. summer in Spain)
+    
+    
     return filtered_data
     
 
