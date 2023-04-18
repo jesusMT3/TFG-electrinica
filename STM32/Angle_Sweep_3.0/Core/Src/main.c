@@ -79,6 +79,7 @@ volatile int sweep = 0;
 volatile float pos = 0; //step in which the motor is
 volatile float angle = 0; //value of the angle the motor has to be at any time
 volatile int step = 0;
+volatile int counter;
 /*
  * 0: No step
  * 1: Step
@@ -105,7 +106,7 @@ float increment = 0.5;
 
 // Timer constants
 
-uint32_t sweep_time = 30 * 1000; // s * 1000
+uint32_t sweep_time = 100; // s
 
 //Initialization parameters
 
@@ -114,8 +115,8 @@ L6474_Init_t gL6474InitParams =
 {
     160,                               /// Acceleration rate in step/s2. Range: (0..+inf).
     160,                               /// Deceleration rate in step/s2. Range: (0..+inf).
-    800,                              /// Maximum speed in step/s. Range: (30..10000].
-    800,                               ///Minimum speed in step/s. Range: [30..10000).
+    300,                              /// Maximum speed in step/s. Range: (30..10000].
+    300,                               ///Minimum speed in step/s. Range: [30..10000).
     250,                               ///Torque regulation current in mA. (TVAL register) Range: 31.25mA to 4000mA.
     750,                               ///Overcurrent threshold (OCD_TH register). Range: 375mA to 6000mA.
     L6474_CONFIG_OC_SD_ENABLE,         ///Overcurrent shutwdown (OC_SD field of CONFIG register).
@@ -231,7 +232,14 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 
 	if (htim == &htim10){
-	  sweep = 1; //start sweeping
+
+	  //HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_12);
+	  counter++;
+
+	  if (counter >= sweep_time){
+		  sweep = 1; //start sweeping
+		  counter = 0;
+	  }
 	}
 
 }
@@ -255,18 +263,27 @@ void update_pos(){
 void motor_move(float angle_to_go){
 	update_pos();
 	if (angle_to_go > angle){
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, SET);
+	    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, RESET);
+
 		BSP_MotorControl_Move(0, FORWARD, 1);
-		//BSP_MotorControl_WaitWhileActive(0);
+		BSP_MotorControl_WaitWhileActive(0);
 		update_pos();
 	}
 	else if (angle_to_go < angle){
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, RESET);
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, SET);
+
 		BSP_MotorControl_Move(0, BACKWARD, 1);
-		//BSP_MotorControl_WaitWhileActive(0);
+		BSP_MotorControl_WaitWhileActive(0);
 		update_pos();
 	}
 	else {
 		BSP_MotorControl_HardStop(0);
 		flag_end_movement = 1;
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, RESET);
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, RESET);
+
 	}
 
 }
@@ -285,7 +302,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  n  HAL_Init();
+    HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -318,17 +335,22 @@ int main(void)
   while (1)
   {
 	  if (state == 0){ //First calibration
+		  BSP_MotorControl_SetMaxSpeed(0, 800);
+		  BSP_MotorControl_SetMinSpeed(0, 800);
 		  BSP_MotorControl_Move(0, FORWARD, 1);//Forward == Towards calibration FC
-		  //BSP_MotorControl_WaitWhileActive(0);
+		  BSP_MotorControl_WaitWhileActive(0);
 		  update_pos();
 	  }
 	  else if (state == 1){ //Normal behaviour
+		  BSP_MotorControl_SetMaxSpeed(0, 300);
+		  BSP_MotorControl_SetMinSpeed(0, 300);
 		  if (sweep == 1){
 
 			  //Get the signal of movement out for the datalogger
-			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, SET);
+
 
 			  if (direction == 1){
+
 				  motor_move(min_angle);
 				  if (flag_end_movement == 1){
 					  // movement finished -> reset and change direction
@@ -345,12 +367,13 @@ int main(void)
 					  flag_end_movement = 0;
 					  direction = 1;
 					  sweep = 0;
+					  //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, RESET);
 				  }
 			  }
 		  }
 
 		  else{
-			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, RESET); //Turn down sweeping signal
+
 		  }
 
 	  }
@@ -506,9 +529,9 @@ static void MX_TIM10_Init(void)
 
   /* USER CODE END TIM10_Init 1 */
   htim10.Instance = TIM10;
-  htim10.Init.Prescaler = 4200 - 1;
+  htim10.Init.Prescaler = 8400 - 1;
   htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim10.Init.Period = 300000 - 1;
+  htim10.Init.Period = 10000 - 1;
   htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim10) != HAL_OK)
