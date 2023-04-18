@@ -57,6 +57,8 @@ static void MX_TIM10_Init(void);
 /* USER CODE BEGIN PFP */
 float angle_to_step(float angle);
 float step_to_angle(float step);
+void update_pos();
+void motor_move(float angle);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -69,7 +71,7 @@ volatile int state = 0;
  * 2: Exception. FC1 interruption mode
  * 3: Exception. FC2 interruption mode
  * */
-volatile int sweep = 1;
+volatile int sweep = 0;
 /*
  * 0: No sweep
  * 1: Sweep
@@ -85,22 +87,25 @@ volatile int step = 0;
 volatile int direction = 1;
 /*
  * 1: Increment
- *-1: Decrement*/
+ *-1: Decrement
+ * */
 
-//counter for the sweeping mode
-volatile int counter = 0;
+volatile int flag_end_movement = 0;
+
+/* 0: movement not finished
+ * 1: movement finished
+ * */
 
 // Angle constants
-float max_angle = 20; //max sweeping angle
-float min_angle = -20; //min sweeping angle
-float FC1_angle = 62;
-float FC2_angle = -60;
+float max_angle = 55; //max sweeping angle
+float min_angle = -55; //min sweeping angle
+float FC1_angle = -62;
+float FC2_angle = 66.7;
 float increment = 0.5;
 
-// Time constants
+// Timer constants
 
-int step_time = 100; //ms
-int sweep_time = 20*1000; //ms (s*1000)
+uint32_t sweep_time = 30 * 1000; // s * 1000
 
 //Initialization parameters
 
@@ -109,7 +114,7 @@ L6474_Init_t gL6474InitParams =
 {
     160,                               /// Acceleration rate in step/s2. Range: (0..+inf).
     160,                               /// Deceleration rate in step/s2. Range: (0..+inf).
-    1600,                              /// Maximum speed in step/s. Range: (30..10000].
+    800,                              /// Maximum speed in step/s. Range: (30..10000].
     800,                               ///Minimum speed in step/s. Range: [30..10000).
     250,                               ///Torque regulation current in mA. (TVAL register) Range: 31.25mA to 4000mA.
     750,                               ///Overcurrent threshold (OCD_TH register). Range: 375mA to 6000mA.
@@ -222,15 +227,48 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	}
 }
 
+//Sweeper timer
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
+
+	if (htim == &htim10){
+	  sweep = 1; //start sweeping
+	}
+
+}
+
 
 float angle_to_step(float angle){
-	float conversion = angle * (19/1.8);
+	float conversion = angle * 164.8;
 	return conversion;
 }
 
 float step_to_angle(float step){
-	float conversion = angle / (19/1.8);
+	float conversion = angle / 164.8;
 	return conversion;
+}
+
+void update_pos(){
+	pos = BSP_MotorControl_GetPosition(0);
+    angle = pos / 164.8;
+}
+
+void motor_move(float angle_to_go){
+	update_pos();
+	if (angle_to_go > angle){
+		BSP_MotorControl_Move(0, FORWARD, 1);
+		//BSP_MotorControl_WaitWhileActive(0);
+		update_pos();
+	}
+	else if (angle_to_go < angle){
+		BSP_MotorControl_Move(0, BACKWARD, 1);
+		//BSP_MotorControl_WaitWhileActive(0);
+		update_pos();
+	}
+	else {
+		BSP_MotorControl_HardStop(0);
+		flag_end_movement = 1;
+	}
+
 }
 /* USER CODE END 0 */
 
@@ -247,7 +285,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+  n  HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -271,8 +309,8 @@ int main(void)
   BSP_MotorControl_Init(BSP_MOTOR_CONTROL_BOARD_ID_L6474, &gL6474InitParams);
   BSP_MotorControl_AttachFlagInterrupt(MyFlagInterruptHandler);
   BSP_MotorControl_AttachErrorHandler(ErrorHandler_Shield);
-  BSP_MotorControl_SelectStepMode(0,STEP_MODE_1_16);
   state = 0;
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -280,28 +318,58 @@ int main(void)
   while (1)
   {
 	  if (state == 0){ //First calibration
-		  BSP_MotorControl_Run(0,BACKWARD);
+		  BSP_MotorControl_Move(0, FORWARD, 1);//Forward == Towards calibration FC
+		  //BSP_MotorControl_WaitWhileActive(0);
+		  update_pos();
 	  }
 	  else if (state == 1){ //Normal behaviour
-		  BSP_MotorControl_GoTo(0,-6400);
-		  BSP_MotorControl_WaitWhileActive(0);
+		  if (sweep == 1){
 
-		  BSP_MotorControl_GoTo(0, 6400);
-		  BSP_MotorControl_WaitWhileActive(0);
+			  //Get the signal of movement out for the datalogger
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, SET);
+
+			  if (direction == 1){
+				  motor_move(min_angle);
+				  if (flag_end_movement == 1){
+					  // movement finished -> reset and change direction
+					  flag_end_movement = 0;
+					  direction = -1;
+					  sweep = 0;
+				  }
+			  }
+
+			  else if (direction == -1){
+				  motor_move(max_angle);
+				  if (flag_end_movement == 1){
+					  // movement finished -> reset and change direction
+					  flag_end_movement = 0;
+					  direction = 1;
+					  sweep = 0;
+				  }
+			  }
+		  }
+
+		  else{
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, RESET); //Turn down sweeping signal
+		  }
+
 	  }
-	  else if (state == 2){ //security FC
+	  else if (state == 2){ //calibration FC
 		  angle = FC2_angle;
+
+		  BSP_MotorControl_SetHome(0, pos - angle_to_step(FC2_angle));
 		  pos = BSP_MotorControl_GetPosition(0);
-		  BSP_MotorControl_SetHome(0, pos);
-		  BSP_MotorControl_Run(0,BACKWARD);
+
+		  HAL_TIM_Base_Start_IT(&htim10);
+
+		  state = 1;
 
 
 	  }
-	  else if (state == 3){ //calibration FC
+	  else if (state == 3){ //secutiry FC
 		  angle = FC1_angle;
-		  pos = BSP_MotorControl_GetPosition(0);
-		  BSP_MotorControl_SetHome(0, pos);
-		  BSP_MotorControl_Run(0,FORWARD);
+		  HAL_TIM_Base_Stop_IT(&htim10);
+
 
 	  }
     /* USER CODE END WHILE */
@@ -438,9 +506,9 @@ static void MX_TIM10_Init(void)
 
   /* USER CODE END TIM10_Init 1 */
   htim10.Instance = TIM10;
-  htim10.Init.Prescaler = 16000;
+  htim10.Init.Prescaler = 4200 - 1;
   htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim10.Init.Period = step_time;
+  htim10.Init.Period = 300000 - 1;
   htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim10) != HAL_OK)
