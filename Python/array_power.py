@@ -19,13 +19,13 @@ import multiprocessing
 n = 8
 m = 12
 
-cols = ["No", "DateTime", "ms", "CH1", "CH2", "CH3", "CH4", "CH5", 
-        "CH6", "CH7", "CH8", "CH9", "CH11", "CH12", "CH13", "CH14", 
-        "CH15", "T1", "T2", "GS1", "GS2", "GS3", "GS4", "Alarm1", 
-        "Alarm2", "Alarm3", "AlarmOut"] # columns in which the data from data is organised
+# cols = ["No", "DateTime", "ms", "BW-E", "BW-ME", "BW-MI", "BW-I", "FW-E", 
+#         "FW-ME", "FW-MI", "FW-I", "BE-E", "BE-ME", "BE-MI", "BE-I", "FE-E", 
+#         "FE-ME", "FE-MI", "FE-I", "GS1", "GS2", "GS3", "GS4", "Alarm1", 
+#         "Alarm2", "Alarm3", "AlarmOut"] # columns in which the data from data is organised
 
 # Irradiance conversion coefficients
-irr_coef = [0.1658, 0.1638, 0.1664, 0.1678, 0.3334, 0.1686, 0.1673, np.inf, np.inf, np.inf, np.inf, 0.3306, 0.3317, 0.3341, 0.3361]
+# irr_coef = [0.1658, 0.1638, 0.1664, 0.1678, 0.3334, 0.1686, 0.1673, np.inf, np.inf, np.inf, np.inf, 0.3306, 0.3317, 0.3341, 0.3361]
 
 module = PVmodule()
 plate1 = None
@@ -35,6 +35,7 @@ REPROCESS_ARRAY = True
 
 def main():
     global plate1
+    global results
     global power
     global filtered_data
     global system
@@ -43,8 +44,8 @@ def main():
 
     data = dl.data_import('datalogger')
     filtered_data = dl.datalogger_filter(df = data,
-                                      mean_coeff = 1000, 
-                                      irr_coef = irr_coef, 
+                                      mean_coeff = 10, 
+                                      irr_coef = dl.irr_coef, 
                                       ch_temp = 'CH19')
 
     plate_front = filtered_data['W15']
@@ -60,11 +61,13 @@ def main():
 
     if REPROCESS_ARRAY:
         with multiprocessing.Pool() as pool:
-            args = [(x, plate1, module, m, n) for x in range(50000, 51000)]
+            args = [(x, plate1, module, m, n) for x in plate1.index]
             results = pool.starmap(process_element, args)
-
-        for x, power_value in results:
-            power[x] = power_value
+            
+        results = pd.DataFrame(results, columns = ['DateTime', 'power_value'])
+        power = pd.DataFrame(results['power_value'])
+        power.index = results['DateTime']
+        
         np.savetxt('power_array.txt', power)
     else:
         power = np.loadtxt('power_array.txt')
@@ -79,11 +82,7 @@ def main():
     plate1['Power'].loc[plate1['Power'] > 0].plot()
     plt.title('Power')
     
-    plt.figure()
-    plate1['Mean'].loc[plate1['Power'] > 0].plot()
-    plt.title('Mean')
-    
-    iv_irr_data('14:00:00')
+    # iv_irr_data('14:00:00')
 
 def create_plate1_df(filtered_data, plate_front):
     plate1 = pd.DataFrame()
@@ -98,12 +97,16 @@ def create_plate1_df(filtered_data, plate_front):
             plate1[i] = filtered_data['W4'] + plate_front
         else:
             plate1[i] = np.empty(len(filtered_data)) * np.nan
+            
+        plate1['T'] = filtered_data['CH19']
     return plate1
 
+def create_plates_df(filtered_data):
+    print(":)")
+
 def process_element(x, plate1, module, m, n):
-    name = plate1.index[x]
-    data = plate1.loc[name]
-    temp_data = filtered_data['T_av'].loc[name]
+    data = plate1.loc[x]
+    temp_data = plate1['T'].loc[x]
     suns = np.zeros(m*n)
     z = 0
         
@@ -172,7 +175,6 @@ def iv_irr_data(hour):
     plt.show()
          
     dl.plot_insolation(figure=insolations, title='Irradiance at ' + hour)
-    
     print('Power at ', hour, ': ', power)
 
 if __name__ == "__main__":
