@@ -138,7 +138,7 @@ def datalogger_filter(df, mean_coeff, irr_coef, ch_temp):
 
     filtered_data = df.copy()
 
-    for i in range(1, 16):
+    for i in range(1, 17):
         try:
             aux_str = "CH" + str(i)
             filtered_data[aux_str] = smooth(filtered_data[aux_str], mean_coeff)
@@ -150,7 +150,7 @@ def datalogger_filter(df, mean_coeff, irr_coef, ch_temp):
     alpha = 4.522e-4 # pu units
     T0  = 298.15 # STC temperature
 
-    for i in range(1, 16):
+    for i in range(1, 17):
         # Irradiance conversion with temperature dependance
         try:
             coef = 1 + alpha * ((filtered_data[ch_temp] + 273.15)- T0)
