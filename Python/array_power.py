@@ -39,7 +39,6 @@ m = module.numberCells
 m /= n
 m = int(m)
 
-plate1 = None
 power = None
 
 # Configuration parameters
@@ -58,51 +57,42 @@ def main():
 
     data = dl.data_import('datalogger')
     filtered_data = dl.datalogger_filter(df = data,
-                                      mean_coeff = 10, 
+                                      mean_coeff = 1, 
                                       irr_coef = dl.irr_coef, 
                                       ch_temp = 'CH19')
 
-    plate_front = filtered_data['W15']
-    plate1 = create_plate1_df(filtered_data, plate_front).interpolate(method = 'linear', axis = 1)
     plate_west, plate_east = create_plates_df(filtered_data)
     plate_west = plate_west.interpolate(method = 'linear', axis = 1)
     plate_east = plate_east.interpolate(method = 'linear', axis = 1)
     
-    plate1['Mean'] = plate1.mean(axis = 1)
-
-    dl.plot_channels(magnitude = 'Irradiance [W/m$^2$]', 
-                    dataframe = plate1, 
-                    plate = plate1, 
-                    title = 'East plate global Irradiance')
+    start_time = time.time()
     
-    calc_power(plate_west.index[0], plate_west, plate_east, system, m, n)
-
-    # start_time = time.time()
-    
-    # if REPROCESS_ARRAY:
-    #     with multiprocessing.Pool() as pool:
-    #         args = [(x, plate1, module, m, n) for x in plate1.index]
-    #         results = pool.starmap(process_element, args)
+    if REPROCESS_ARRAY:
+        with multiprocessing.Pool() as pool:
+            args = [(x, plate_west, plate_east, system, m, n) for x in filtered_data.index]
+            results = pool.starmap(calc_power, args)
             
-    #     results = pd.DataFrame(results, columns = ['DateTime', 'power_value'])
-    #     power = pd.DataFrame(results['power_value'])
-    #     power.index = results['DateTime']
+        results = pd.DataFrame(results, columns = ['DateTime', 'power_value'])
+        power = pd.DataFrame(results['power_value'])
+        power.index = results['DateTime']
         
-    #     np.savetxt('power_array.txt', power)
-    # else:
-    #     power = np.loadtxt('power_array.txt')
+        np.savetxt('power_array.txt', power)
+    else:
+        power = np.loadtxt('power_array.txt')
     
-    # end_time = time.time()
-    # processing_time = end_time - start_time
-    # print(f"Processing time: {processing_time:.4f} seconds")
+    end_time = time.time()
+    processing_time = end_time - start_time
+    print(f"Processing time: {processing_time:.4f} seconds")
 
-    # plate1['Power'] = power
     
-    # plt.figure()
-    # plate1['Power'].loc[plate1['Power'] > 0].plot()
-    # plt.title('Power')
+    plt.figure(figsize = (10,6))
+    power.plot()
+    plt.title('Power')
+    plt.tight_layout()
     
-    # iv_irr_data('14:00:00')
+    iv_irr_data('2023-03-16 11:46:00')
+    iv_irr_data('2023-03-16 11:47:00')
+    iv_irr_data('2023-03-16 12:37:00')
 
 def create_plate1_df(filtered_data, plate_front):
     plate1 = pd.DataFrame()
@@ -183,82 +173,47 @@ def process_element(x, plate1, module, m, n):
 
 def calc_power(x, plate_west, plate_east, system, m, n):
 
-    global irr_west, cell_dict, data_west
-    cell_dict = np.zeros(module.numberCells)
+
     irr_west = np.zeros(module.numberCells)
+    irr_east = np.zeros(module.numberCells)
     
-    data_west = np.array(plate_west.loc[x])
+    data_west = plate_west.loc[x]
     data_east = plate_east.loc[x]
     
     # Create irradiance arrays
     for i in range(0, module.numberCells):
         irr_west[i] = data_west[i // m]
         
-    i = 0
-    j = 0
-    for k in range(len(module.cell_pos[j][i])):
-        for j in range(len(module.cell_pos[i])):
-            for i in range(len(module.cell_pos)):
-                print(i,j,k)
+    for i in module.cell_pos:
+        for j in i:
+            
+            aux = 0
+            for k in j:
+                idx = k['idx']
+                irr_west[idx] = data_west[aux]/1000
+                irr_east[idx] = data_east[aux]/1000
+                aux += 1
+    
+    # There can't be non zero irradiance values 
+    irr_west[irr_west <= 0] = 0.001
+    irr_east[irr_east <= 0] = 0.001
 
-
+    dict_suns = {0: {0: irr_west, 1: irr_east}}
     
-    global dict_suns
-    dict_suns = {0: {0: {'cells': None, 'Ee': None},
-                    1: {'cells': None, 'Ee': None}}}
-    
-    
+    system.setSuns(dict_suns)
+    system.setTemps(data_west['T'] + 273.15)
+    power = system.Pmp
+    return x, power
     
 
 def iv_irr_data(hour):
-    index = plate1.index.get_loc(hour)
-    x, power = process_element(index, plate1, module, m, n)
     
-    data = plate1.loc[hour]
+    # Plot the IV curve
+    x, power = calc_power(hour, plate_west, plate_east, system, m, n)
     
-    insolations = np.zeros([m,n])
-    for i in range (0, m):
-        var = data[i]
-        for j in range(0, n):
-            insolations[i][j] = var
-            continue
-
-    # Filter out positive values for both plots
-    positive_mask = (module.Pmod > 0)
-    Imod_positive = module.Imod[positive_mask]
-    
-    Vmod_positive = module.Vmod[positive_mask]
-    Imod_positive = module.Imod[positive_mask]
-    
-    Pmod_positive = module.Pmod[positive_mask]
-    Imod_positive = module.Imod[positive_mask]
-    
-    # Create the subplots
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
-    
-    # Plot 1: Vmod vs Imod
-    ax1.plot(Vmod_positive, Imod_positive)
-    ax1.set_xlabel('Voltage [V]')
-    ax1.set_ylabel('Current [A]')
-    ax1.set_title('I-V curve')
-    
-    # Plot 2: Pmod vs Imod
-    ax2.plot(Vmod_positive, Pmod_positive)
-    ax2.set_xlabel('Voltage[V]')
-    ax2.set_ylabel('Power [W]')
-    ax2.set_title('P-V curve')
-    
-    # Set the same axis limits for both subplots
-    ax1.set_xlim(left=0)
-    ax2.set_xlim(left=0)
-    ax2.set_ylim(bottom=0)
-    
-    # Show the plot
-    plt.tight_layout()
-    plt.show()
-         
-    dl.plot_insolation(figure=insolations, title='Irradiance at ' + hour)
-    print('Power at ', hour, ': ', power)
+    fig1 = plt.Figure()
+    fig1 = system.plotSys()
+    fig1.tight_layout()
 
 if __name__ == "__main__":
     main()

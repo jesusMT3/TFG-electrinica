@@ -141,7 +141,7 @@ def datalogger_filter(df, mean_coeff, irr_coef, ch_temp):
     for i in range(1, 17):
         try:
             aux_str = "CH" + str(i)
-            filtered_data[aux_str] = smooth(filtered_data[aux_str], mean_coeff)
+            # filtered_data[aux_str] = smooth(filtered_data[aux_str], mean_coeff)
         except KeyError:
             # print("Channel ",i ," does not exist")
             continue
