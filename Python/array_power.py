@@ -47,70 +47,71 @@ power = None
 REPROCESS_ARRAY = True
 
 def main():
+    
+    # Global variables
     global plate1, plate_west, plate_east
     global results, suns
     global power
     global filtered_data
     global system
 
+    
     power = np.zeros(86400)
 
+    # Import data from the datalogger
     data = dl.data_import('datalogger')
+    
+    # Convert data to irradiance, temperature correction, and smoothing
     filtered_data = dl.datalogger_filter(df = data,
                                       mean_coeff = 1, 
                                       irr_coef = dl.irr_coef, 
                                       ch_temp = 'CH19')
 
+    # Create all plate irradiance levels through interpolation
     plate_west, plate_east = create_plates_df(filtered_data)
     plate_west = plate_west.interpolate(method = 'linear', axis = 1)
     plate_east = plate_east.interpolate(method = 'linear', axis = 1)
     
+    #To measure performance ratio of the system
     start_time = time.time()
     
     if REPROCESS_ARRAY:
+        
+        # Multiprocess loop
         with multiprocessing.Pool() as pool:
-            args = [(x, plate_west, plate_east, system, m, n) for x in filtered_data.index]
-            results = pool.starmap(calc_power, args)
             
+            # Arguments of the calc_power function
+            args = [(x, plate_west, plate_east, system, m, n) for x in filtered_data.index]
+            
+            # Actual calculation of system power
+            results = pool.starmap(calc_power, args)
+        
+        # Rearrange results into a dataframe
         results = pd.DataFrame(results, columns = ['DateTime', 'power_value'])
         power = pd.DataFrame(results['power_value'])
         power.index = results['DateTime']
         
-        np.savetxt('power_array.txt', power)
+        # Save CSV file with the data obtained
     else:
         power = np.loadtxt('power_array.txt')
     
+    # Finish time performance measure
     end_time = time.time()
     processing_time = end_time - start_time
     print(f"Processing time: {processing_time:.4f} seconds")
 
-    
+    # Plot data
     plt.figure(figsize = (10,6))
     power.plot()
     plt.title('Power')
     plt.tight_layout()
     
+    # Plot specific data points
     iv_irr_data('2023-03-16 11:46:00')
     iv_irr_data('2023-03-16 11:47:00')
     iv_irr_data('2023-03-16 12:37:00')
 
-def create_plate1_df(filtered_data, plate_front):
-    plate1 = pd.DataFrame()
-    for i in range (0, m):
-        if i == 0 or i == 1:
-            plate1[i] = filtered_data['W1'] + plate_front
-        elif i == (m / 2) - 1:
-            plate1[i] = filtered_data['W2'] + plate_front
-        elif i == (m / 2) + 1:
-            plate1[i] = filtered_data['W3'] + plate_front
-        elif i == m - 1 or i == m - 2:
-            plate1[i] = filtered_data['W4'] + plate_front
-        else:
-            plate1[i] = np.empty(len(filtered_data)) * np.nan
-            
-        plate1['T'] = filtered_data['CH19']
-    return plate1
-
+# Place sensor data into a dataframe of all levels of irradiance
 def create_plates_df(filtered_data):
     plate_west = pd.DataFrame(columns = range(0,m))
     plate_east = pd.DataFrame(columns = range(0,m))
@@ -136,54 +137,34 @@ def create_plates_df(filtered_data):
         elif i == m - 1 or i == m - 2:
             plate_west[i] = filtered_data['W4'] + filtered_data['W8']
             plate_east[i] = filtered_data['W12'] + filtered_data['W16']
+            
+        # Spots without sensors (they will be interpolated)
         else:
             plate_west[i] = np.empty(len(filtered_data)) * np.nan
             plate_east[i] = np.empty(len(filtered_data)) * np.nan
             
-        # Set temperature data
+    # Set temperature data
     plate_west['T'] = filtered_data['CH19']
     plate_east['T'] = filtered_data['CH19']
         
     return plate_west, plate_east
 
-def process_element(x, plate1, module, m, n):
-    
-    data = plate1.loc[x]
-    temp_data = plate1['T'].loc[x]
-    suns = np.zeros(m*n)
-    z = 0
-        
-    for i in range(0, n):
-        if i != 0:
-            if i % 2 == 0:
-                z += m + 1
-            elif i % 2 != 0:
-                z += m - 1
-        for j in range(0, m):
-            suns[z] = data[j]
-            if i % 2 != 0:
-                z -= 1
-            if i % 2 == 0:
-                z += 1
-    
-    module.setSuns(suns/1000)
-    module.setTemps(temp_data + 273.15)
-    power = module.Pmod.max()
-    return x, power
-
+# Function that outputs peak power with given irradiance maps of the system
 def calc_power(x, plate_west, plate_east, system, m, n):
 
-
+    # Arrays of irradiance of all cells
     irr_west = np.zeros(module.numberCells)
     irr_east = np.zeros(module.numberCells)
     
+    # Data from the datalogger
     data_west = plate_west.loc[x]
     data_east = plate_east.loc[x]
     
     # Create irradiance arrays
     for i in range(0, module.numberCells):
         irr_west[i] = data_west[i // m]
-        
+    
+    # Place irradiance in the given order of the solar pannel module 
     for i in module.cell_pos:
         for j in i:
             
@@ -194,18 +175,25 @@ def calc_power(x, plate_west, plate_east, system, m, n):
                 irr_east[idx] = data_east[aux]/1000
                 aux += 1
     
-    # There can't be non zero irradiance values 
+    # There can't be non zero irradiance values (the funct won't work)
     irr_west[irr_west <= 0] = 0.001
     irr_east[irr_east <= 0] = 0.001
 
     dict_suns = {0: {0: irr_west, 1: irr_east}}
     
+    # Set irradiance 
     system.setSuns(dict_suns)
+    
+    # Set temperature
     system.setTemps(data_west['T'] + 273.15)
+    
+    # Get peak power
     power = system.Pmp
+    
+    # Return data
     return x, power
     
-
+# Function which calculates IV curve of specific points in the data
 def iv_irr_data(hour):
     
     # Plot the IV curve
@@ -214,6 +202,7 @@ def iv_irr_data(hour):
     fig1 = plt.Figure()
     fig1 = system.plotSys()
     fig1.tight_layout()
+
 
 if __name__ == "__main__":
     main()
