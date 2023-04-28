@@ -15,19 +15,17 @@ import pandas as pd
 from pvmismatch import PVmodule, PVsystem
 import matplotlib.pyplot as plt
 import multiprocessing
+from tkinter import filedialog
 
-
-
-# cols = ["No", "DateTime", "ms", "BW-E", "BW-ME", "BW-MI", "BW-I", "FW-E", 
-#         "FW-ME", "FW-MI", "FW-I", "BE-E", "BE-ME", "BE-MI", "BE-I", "FE-E", 
-#         "FE-ME", "FE-MI", "FE-I", "GS1", "GS2", "GS3", "GS4", "Alarm1", 
-#         "Alarm2", "Alarm3", "AlarmOut"] # columns in which the data from data is organised
-
-# Irradiance conversion coefficients
-# irr_coef = [0.1658, 0.1638, 0.1664, 0.1678, 0.3334, 0.1686, 0.1673, np.inf, np.inf, np.inf, np.inf, 0.3306, 0.3317, 0.3341, 0.3361]
+# Sensor distribution
+BW = ['CH1', 'CH2', 'CH3', 'CH4']
+FW = ['CH5', 'CH6', 'CH7', 'CH8']
+BE = ['CH9', 'CH10', 'CH11', 'CH12']
+FE = ['CH13', 'CH14', 'CH15', 'CH16']
+sys = BW + FW + BE + FE
 
 module = PVmodule()
-system = PVsystem(numberMods=2,numberStrs=1, pvmods = module)
+system = PVsystem(numberMods=1,numberStrs=2, pvmods = module)
 n = 0
 m = 0
 
@@ -66,6 +64,9 @@ def main():
                                       mean_coeff = 1, 
                                       irr_coef = dl.irr_coef, 
                                       ch_temp = 'CH19')
+    
+    filtered_data['CH17'] = data['CH17']
+    filtered_data['CH18'] = data['CH18']
 
     # Create all plate irradiance levels through interpolation
     plate_west, plate_east = create_plates_df(filtered_data)
@@ -101,16 +102,71 @@ def main():
     print(f"Processing time: {processing_time:.4f} seconds")
 
     # Plot data
-    plt.figure(figsize = (10,6))
-    power.plot()
-    plt.title('Power')
-    plt.tight_layout()
+    # plt.figure(figsize = (10,6))
+    # power['power_value'].plot()
+    # plt.title('Power')
+    # plt.tight_layout()
     
-    # Plot specific data points
-    iv_irr_data('2023-03-16 11:46:00')
-    iv_irr_data('2023-03-16 11:47:00')
-    iv_irr_data('2023-03-16 12:37:00')
-
+    # # Plot specific data points
+    # iv_irr_data('2023-03-16 11:46:00')
+    # iv_irr_data('2023-03-16 11:47:00')
+    # iv_irr_data('2023-03-16 12:37:00')
+    
+    # Get more data to dataframe
+    
+    # Irradiance channels
+    power[sys] = filtered_data[sys]
+    power[sys] = power[sys].clip(lower=0.01)
+    
+    # Mismatch loss factor of the plates
+    power['Mismatch BW'] = power[BW].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)
+    power['Mismatch FW'] = power[FW].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)
+    power['Mismatch BE'] = power[BE].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)
+    power['Mismatch FE'] = power[FE].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)
+    
+    # Angle correspondant to each power value
+    for i in filtered_data.index:
+        flag1 = 0
+        flag2 = 0
+        # array_left = np.array()
+        # array_right = np.array()
+        aux = 0
+        angle = 0
+        
+        if filtered_data['CH17'].loc[i] > 100 and filtered_data['CH18'].loc[i] < 100:
+            flag1 = 1
+            angle = -60
+            
+        elif filtered_data['CH17'].loc[i] < 100 and filtered_data['CH18'].loc[i] > 100:
+            flag2 = 1
+            angle = 60
+            
+        if flag1 == 1:n 
+            if filtered_data['CH17'].loc[i] < 100 and filtered_data['CH18'].loc[i] < 100:
+                flag1 = 0 
+                
+                for i in range(0, aux):
+                    print(angle)
+                    angle += 30/aux
+                    
+                aux = 0
+            else:    
+                print(i, 'left')
+                aux += 1
+                
+        elif flag2 == 1:
+            if filtered_data['CH17'].loc[i] < 100 and filtered_data['CH18'].loc[i] < 100:
+                flag2 = 0 
+                aux = 0
+            else:    
+                print(i, 'right')
+                aux += 1
+            
+    
+    # Save file
+    file_path = filedialog.asksaveasfilename(defaultextension='.csv')
+    power.to_csv(file_path, index = True)
+    
 # Place sensor data into a dataframe of all levels of irradiance
 def create_plates_df(filtered_data):
     plate_west = pd.DataFrame(columns = range(0,m))
@@ -179,7 +235,12 @@ def calc_power(x, plate_west, plate_east, system, m, n):
     irr_west[irr_west <= 0] = 0.001
     irr_east[irr_east <= 0] = 0.001
 
-    dict_suns = {0: {0: irr_west, 1: irr_east}}
+    # For two modules in parallel
+    dict_suns = {0: {0: irr_west},
+                 1: {0: irr_east}}
+    
+    # For two modules in series
+    # dict_suns = {0: {0: irr_west, 1: irr_east}}
     
     # Set irradiance 
     system.setSuns(dict_suns)
