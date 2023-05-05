@@ -205,10 +205,13 @@ def calc_power(x, plate_west, plate_east, system, m, n):
         irr_west[i] = data_west[i // m]
     
     # Place irradiance in the given order of the solar pannel module 
+    # variable i represents diodes
     for i in module.cell_pos:
+        # variable j represents columns
         for j in i:
             
             aux = 0
+            # variable k represents dictionary of cells
             for k in j:
                 idx = k['idx']
                 irr_west[idx] = data_west[aux]/1000
