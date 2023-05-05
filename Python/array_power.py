@@ -67,105 +67,89 @@ def main():
     
     filtered_data['CH17'] = data['CH17']
     filtered_data['CH18'] = data['CH18']
+    
+    # Create angle column
+    filtered_data['angle'] = np.nan
+    threshold = 100
+    flag_ch17 = False
+    flag_ch18 = False
+    
+    for i, row in filtered_data.iterrows():
+        if row['CH17'] > 100:
+            flag_ch17 = True
+            print(i)
+            
+            if row['CH17'] <= 100:
+                flag_ch17 = False
+                print('End ch17')
+            
+        elif row['CH18'] < 100:
+            flag_ch18 = True
+            print(i)
+            
+            
+        
+    print(filtered_data)
 
-    # Create all plate irradiance levels through interpolation
-    plate_west, plate_east = create_plates_df(filtered_data)
-    plate_west = plate_west.interpolate(method = 'linear', axis = 1)
-    plate_east = plate_east.interpolate(method = 'linear', axis = 1)
+    # # Create all plate irradiance levels through interpolation
+    # plate_west, plate_east = create_plates_df(filtered_data)
+    # plate_west = plate_west.interpolate(method = 'linear', axis = 1)
+    # plate_east = plate_east.interpolate(method = 'linear', axis = 1)
     
-    #To measure performance ratio of the system
-    start_time = time.time()
+    # #To measure performance ratio of the system
+    # start_time = time.time()
     
-    if REPROCESS_ARRAY:
+    # if REPROCESS_ARRAY:
         
-        # Multiprocess loop
-        with multiprocessing.Pool() as pool:
+    #     # Multiprocess loop
+    #     with multiprocessing.Pool() as pool:
             
-            # Arguments of the calc_power function
-            args = [(x, plate_west, plate_east, system, m, n) for x in filtered_data.index]
+    #         # Arguments of the calc_power function
+    #         args = [(x, plate_west, plate_east, system, m, n) for x in filtered_data.index]
             
-            # Actual calculation of system power
-            results = pool.starmap(calc_power, args)
+    #         # Actual calculation of system power
+    #         results = pool.starmap(calc_power, args)
         
-        # Rearrange results into a dataframe
-        results = pd.DataFrame(results, columns = ['DateTime', 'power_value'])
-        power = pd.DataFrame(results['power_value'])
-        power.index = results['DateTime']
+    #     # Rearrange results into a dataframe
+    #     results = pd.DataFrame(results, columns = ['DateTime', 'power_value'])
+    #     power = pd.DataFrame(results['power_value'])
+    #     power.index = results['DateTime']
         
-        # Save CSV file with the data obtained
-    else:
-        power = np.loadtxt('power_array.txt')
+    #     # Save CSV file with the data obtained
+    # else:
+    #     power = np.loadtxt('power_array.txt')
     
-    # Finish time performance measure
-    end_time = time.time()
-    processing_time = end_time - start_time
-    print(f"Processing time: {processing_time:.4f} seconds")
+    # # Finish time performance measure
+    # end_time = time.time()
+    # processing_time = end_time - start_time
+    # print(f"Processing time: {processing_time:.4f} seconds")
 
-    # Plot data
-    # plt.figure(figsize = (10,6))
-    # power['power_value'].plot()
-    # plt.title('Power')
-    # plt.tight_layout()
+    # # Plot data
+    # # plt.figure(figsize = (10,6))
+    # # power['power_value'].plot()
+    # # plt.title('Power')
+    # # plt.tight_layout()
     
-    # # Plot specific data points
-    # iv_irr_data('2023-03-16 11:46:00')
-    # iv_irr_data('2023-03-16 11:47:00')
-    # iv_irr_data('2023-03-16 12:37:00')
+    # # # Plot specific data points
+    # # iv_irr_data('2023-03-16 11:46:00')
+    # # iv_irr_data('2023-03-16 11:47:00')
+    # # iv_irr_data('2023-03-16 12:37:00')
     
-    # Get more data to dataframe
+    # # Get more data to dataframe
     
-    # Irradiance channels
-    power[sys] = filtered_data[sys]
-    power[sys] = power[sys].clip(lower=0.01)
+    # # Irradiance channels
+    # power[sys] = filtered_data[sys]
+    # power[sys] = power[sys].clip(lower=0.01)
     
-    # Mismatch loss factor of the plates
-    power['Mismatch BW'] = power[BW].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)
-    power['Mismatch FW'] = power[FW].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)
-    power['Mismatch BE'] = power[BE].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)
-    power['Mismatch FE'] = power[FE].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)
+    # # Mismatch loss factor of the plates
+    # power['Mismatch BW'] = power[BW].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)
+    # power['Mismatch FW'] = power[FW].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)
+    # power['Mismatch BE'] = power[BE].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)
+    # power['Mismatch FE'] = power[FE].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)       
     
-    # Angle correspondant to each power value
-    for i in filtered_data.index:
-        flag1 = 0
-        flag2 = 0
-        # array_left = np.array()
-        # array_right = np.array()
-        aux = 0
-        angle = 0
-        
-        if filtered_data['CH17'].loc[i] > 100 and filtered_data['CH18'].loc[i] < 100:
-            flag1 = 1
-            angle = -60
-            
-        elif filtered_data['CH17'].loc[i] < 100 and filtered_data['CH18'].loc[i] > 100:
-            flag2 = 1
-            angle = 60
-            
-        if flag1 == 1:n 
-            if filtered_data['CH17'].loc[i] < 100 and filtered_data['CH18'].loc[i] < 100:
-                flag1 = 0 
-                
-                for i in range(0, aux):
-                    print(angle)
-                    angle += 30/aux
-                    
-                aux = 0
-            else:    
-                print(i, 'left')
-                aux += 1
-                
-        elif flag2 == 1:
-            if filtered_data['CH17'].loc[i] < 100 and filtered_data['CH18'].loc[i] < 100:
-                flag2 = 0 
-                aux = 0
-            else:    
-                print(i, 'right')
-                aux += 1
-            
-    
-    # Save file
-    file_path = filedialog.asksaveasfilename(defaultextension='.csv')
-    power.to_csv(file_path, index = True)
+    # # Save file
+    # file_path = filedialog.asksaveasfilename(defaultextension='.csv')
+    # power.to_csv(file_path, index = True)
     
 # Place sensor data into a dataframe of all levels of irradiance
 def create_plates_df(filtered_data):
