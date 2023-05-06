@@ -7,10 +7,7 @@ selected_file = None
 
 def filter_csv():
     date = date_entry.get_date().strftime("%Y-%m-%d")
-    
-    file_path = filedialog.asksaveasfilename(defaultextension=".csv",  
-                                             initialfile=f"{date}", 
-                                             filetypes=[('CSV files', '*.csv')])
+    file_path = filedialog.asksaveasfilename(defaultextension=".csv", initialfile=f"{date}", filetypes=[('CSV files', '*.csv')])
 
     # read original CSV file
     with open(selected_file, 'r') as file:
@@ -24,7 +21,10 @@ def filter_csv():
 
             for row in csv_reader:
                 if row[1].startswith(date): # check if date matches
-                    csv_writer.writerow(row) # write row to new file
+                    # get time from row
+                    time = row[1][11:19]
+                    if time >= '06:00:00' and time <= '22:00:00': # check if time is within range
+                        csv_writer.writerow(row) # write row to new file
                 elif row[1][:10] > date: # stop reading if past last row with filter date
                     break
 

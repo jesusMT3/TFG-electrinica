@@ -47,10 +47,9 @@ def main():
     # Global variables
     global plate1, plate_west, plate_east
     global results, suns
-    global power
+    global power, training_data
     global filtered_data
     global system
-    power = np.zeros(86400)
 
     # Import data from the datalogger
     data = dl.data_import('datalogger')
@@ -75,7 +74,6 @@ def main():
     flag_ch17 = False
     flag_ch18 = False
     
-    global index_array
     index_array = []
     
     for i in filtered_data.index:
