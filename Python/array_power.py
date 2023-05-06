@@ -24,8 +24,7 @@ BE = ['CH9', 'CH10', 'CH11', 'CH12']
 FE = ['CH13', 'CH14', 'CH15', 'CH16']
 sys = BW + FW + BE + FE
 
-module_96_cells = pvm.pvmismatch_lib.pvmodule.STD96
-module_72_cells = pvm.pvmismatch_lib.pvmodule.STD72
+# Module, system and cell initialization
 
 module = pvm.PVmodule(cell_pos = pvm.pvmismatch_lib.pvmodule.STD72)
 system = pvm.PVsystem(numberMods=1,numberStrs=2, pvmods = module)
@@ -33,7 +32,6 @@ n = 0
 m = 0
 
 for i in module.subStrCells:
-    
     n += i
     
 m = module.numberCells
@@ -41,12 +39,9 @@ m /= n
 m = int(m)
 
 power = None
-
-# Configuration parameters
-
-
 REPROCESS_ARRAY = True
 
+# Main function
 def main():
     
     # Global variables
@@ -55,8 +50,6 @@ def main():
     global power
     global filtered_data
     global system
-
-    
     power = np.zeros(86400)
 
     # Import data from the datalogger
