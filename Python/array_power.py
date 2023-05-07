@@ -12,7 +12,7 @@ sys.path.append(os.path.dirname(__file__))
 import datalogger as dl
 import numpy as np
 import pandas as pd
-from pvmismatch import PVmodule, PVsystem
+import pvmismatch as pvm
 import matplotlib.pyplot as plt
 import multiprocessing
 from tkinter import filedialog
@@ -24,13 +24,14 @@ BE = ['CH9', 'CH10', 'CH11', 'CH12']
 FE = ['CH13', 'CH14', 'CH15', 'CH16']
 sys = BW + FW + BE + FE
 
-module = PVmodule()
-system = PVsystem(numberMods=1,numberStrs=2, pvmods = module)
+# Module, system and cell initialization
+
+module = pvm.PVmodule(cell_pos = pvm.pvmismatch_lib.pvmodule.STD72)
+system = pvm.PVsystem(numberMods=1,numberStrs=2, pvmods = module)
 n = 0
 m = 0
 
 for i in module.subStrCells:
-    
     n += i
     
 m = module.numberCells
@@ -38,23 +39,17 @@ m /= n
 m = int(m)
 
 power = None
-
-# Configuration parameters
-
-
 REPROCESS_ARRAY = True
 
+# Main function
 def main():
     
     # Global variables
     global plate1, plate_west, plate_east
     global results, suns
-    global power
+    global power, training_data
     global filtered_data
     global system
-
-    
-    power = np.zeros(86400)
 
     # Import data from the datalogger
     data = dl.data_import('datalogger')
@@ -68,88 +63,112 @@ def main():
     filtered_data['CH17'] = data['CH17']
     filtered_data['CH18'] = data['CH18']
     
+    # Delete data without info on ch17 or ch18
+    threshold = 100
+    filtered_data = filtered_data[(filtered_data['CH17'] > threshold) ^ (filtered_data['CH18'] > threshold)]
+    
     # Create angle column
     filtered_data['angle'] = np.nan
-    threshold = 100
+    
+    # Give values to angle column
     flag_ch17 = False
     flag_ch18 = False
     
-    for i, row in filtered_data.iterrows():
-        if row['CH17'] > 100:
+    index_array = []
+    
+    for i in filtered_data.index:
+        if filtered_data['CH17'].loc[i] > threshold and filtered_data['CH18'].loc[i] < threshold:
             flag_ch17 = True
-            print(i)
+            index_array.append(i)
             
-            if row['CH17'] <= 100:
-                flag_ch17 = False
-                print('End ch17')
-            
-        elif row['CH18'] < 100:
+        elif filtered_data['CH18'].loc[i] > threshold and filtered_data['CH17'].loc[i] < threshold:
             flag_ch18 = True
-            print(i)
+            index_array.append(i)
             
-            
-        
-    print(filtered_data)
+        if filtered_data['CH17'].loc[i] < threshold and flag_ch17 == True:
+            flag_ch17 = False
 
-    # # Create all plate irradiance levels through interpolation
-    # plate_west, plate_east = create_plates_df(filtered_data)
-    # plate_west = plate_west.interpolate(method = 'linear', axis = 1)
-    # plate_east = plate_east.interpolate(method = 'linear', axis = 1)
-    
-    # #To measure performance ratio of the system
-    # start_time = time.time()
-    
-    # if REPROCESS_ARRAY:
-        
-    #     # Multiprocess loop
-    #     with multiprocessing.Pool() as pool:
+            # Create linspace of angles
+            angles = np.linspace(-55, 55, len(index_array))
+            for j, index in enumerate(index_array):
+                filtered_data.at[index, 'angle'] = angles[j]
             
-    #         # Arguments of the calc_power function
-    #         args = [(x, plate_west, plate_east, system, m, n) for x in filtered_data.index]
+            # Reset array of indexes
+            index_array = []
             
-    #         # Actual calculation of system power
-    #         results = pool.starmap(calc_power, args)
-        
-    #     # Rearrange results into a dataframe
-    #     results = pd.DataFrame(results, columns = ['DateTime', 'power_value'])
-    #     power = pd.DataFrame(results['power_value'])
-    #     power.index = results['DateTime']
-        
-    #     # Save CSV file with the data obtained
-    # else:
-    #     power = np.loadtxt('power_array.txt')
-    
-    # # Finish time performance measure
-    # end_time = time.time()
-    # processing_time = end_time - start_time
-    # print(f"Processing time: {processing_time:.4f} seconds")
+        elif filtered_data['CH18'].loc[i] < threshold and flag_ch18 == True:
+            flag_ch18 = False
+            
+            # Create linspace of angles
+            angles = np.linspace(55, -55, len(index_array))
+            for j, index in enumerate(index_array):
+                filtered_data.at[index, 'angle'] = angles[j]
+            
+            # Reset array of indexes
+            index_array = []
 
-    # # Plot data
-    # # plt.figure(figsize = (10,6))
-    # # power['power_value'].plot()
-    # # plt.title('Power')
-    # # plt.tight_layout()
+    # Create all plate irradiance levels through interpolation
+    plate_west, plate_east = create_plates_df(filtered_data)
+    plate_west = plate_west.interpolate(method = 'linear', axis = 1)
+    plate_east = plate_east.interpolate(method = 'linear', axis = 1)
     
-    # # # Plot specific data points
-    # # iv_irr_data('2023-03-16 11:46:00')
-    # # iv_irr_data('2023-03-16 11:47:00')
-    # # iv_irr_data('2023-03-16 12:37:00')
+    #To measure performance ratio of the system
+    start_time = time.time()
     
-    # # Get more data to dataframe
+    if REPROCESS_ARRAY:
+        
+        # Multiprocess loop
+        with multiprocessing.Pool() as pool:
+            
+            # Arguments of the calc_power function
+            args = [(x, plate_west, plate_east, system, m, n) for x in filtered_data.index]
+            
+            # Actual calculation of system power
+            results = pool.starmap(calc_power, args)
+        
+        # Rearrange results into a dataframe
+        results = pd.DataFrame(results, columns = ['DateTime', 'power_value'])
+        power = pd.DataFrame(results['power_value'])
+        power.index = results['DateTime']
+        
+        # Save CSV file with the data obtained
+    else:
+        power = np.loadtxt('power_array.txt')
     
-    # # Irradiance channels
-    # power[sys] = filtered_data[sys]
-    # power[sys] = power[sys].clip(lower=0.01)
+    # Finish time performance measure
+    end_time = time.time()
+    processing_time = end_time - start_time
+    print(f"Processing time: {processing_time:.4f} seconds")
+
+    # Plot data
+    plt.figure(figsize = (10,6))
+    power['power_value'].plot()
+    plt.title('Power')
+    plt.tight_layout()
     
-    # # Mismatch loss factor of the plates
-    # power['Mismatch BW'] = power[BW].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)
-    # power['Mismatch FW'] = power[FW].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)
-    # power['Mismatch BE'] = power[BE].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)
-    # power['Mismatch FE'] = power[FE].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)       
+    # Add angles
+    power['angle'] = filtered_data['angle']
     
-    # # Save file
-    # file_path = filedialog.asksaveasfilename(defaultextension='.csv')
-    # power.to_csv(file_path, index = True)
+    # # Plot specific data points
+    # iv_irr_data('2023-03-16 11:46:00')
+    # iv_irr_data('2023-03-16 11:47:00')
+    # iv_irr_data('2023-03-16 12:37:00')
+    
+    # Get more data to dataframe
+    
+    # Irradiance channels
+    power[sys] = filtered_data[sys]
+    power[sys] = power[sys].clip(lower=0.01)
+    
+    # Mismatch loss factor of the plates
+    power['Mismatch BW'] = power[BW].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)
+    power['Mismatch FW'] = power[FW].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)
+    power['Mismatch BE'] = power[BE].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)
+    power['Mismatch FE'] = power[FE].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)       
+    
+    # Save file
+    file_path = filedialog.asksaveasfilename(defaultextension='.csv')
+    power.to_csv(file_path, index = True)
     
 # Place sensor data into a dataframe of all levels of irradiance
 def create_plates_df(filtered_data):
@@ -205,10 +224,13 @@ def calc_power(x, plate_west, plate_east, system, m, n):
         irr_west[i] = data_west[i // m]
     
     # Place irradiance in the given order of the solar pannel module 
+    # variable i represents diodes
     for i in module.cell_pos:
+        # variable j represents columns
         for j in i:
             
             aux = 0
+            # variable k represents dictionary of cells
             for k in j:
                 idx = k['idx']
                 irr_west[idx] = data_west[aux]/1000
