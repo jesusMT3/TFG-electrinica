@@ -11,6 +11,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from pvlib import tracking, location
 import datalogger as dl
+import numpy as np
 
 # Import dataframe
 data = filedialog.askopenfile()
@@ -32,11 +33,6 @@ meteodata = dl.data_import('meteodata')
 processed_df = pd.DataFrame()
 backtrack_df = pd.DataFrame({})
 
-# Flags to go through dataframe index
-flag_55 = False
-flag_m55 = False
-array_index = []
-
 # Backtrack angle
 weather_data = meteodata.loc[df.index]
 sun_data = location.get_solarposition(times = df.index)
@@ -47,6 +43,24 @@ tracker = tracking.SingleAxisTrackerMount(backtrack = True,
 backtrack_angle = tracker.get_orientation(solar_zenith = sun_data['apparent_zenith'],
                                            solar_azimuth = sun_data['azimuth'])
 
+df['group'] = np.nan
 
+# Clasificate groups
+aux = 1
+for i in df.index:
+    if (df['angle'].loc[i] == -55) or (df['angle'].loc[i] == 55):
+        aux += 1
+    
+        
+    df['group'].loc[i] = int(aux / 2)
+    
+for i in range(0, int(df['group'].max())):
+    
+    data = pd.DataFrame(df.loc[df['group'] == i])
+    max_power = data['power_value'].max()
+    max_angle = data['angle'].loc[data['power_value'] == max_power]   
+    backtrack = backtrack_angle['tracker_theta'].loc[max_angle.index]
+    
+    # closest_index = (data['angle'] - backtrack).abs().idxmin()
 
 
