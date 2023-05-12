@@ -76,7 +76,7 @@ volatile int sweep = 0;
  * 0: No sweep
  * 1: Sweep
  * */
-volatile float pos = 0; //step in which the motor is
+volatile int32_t pos = 0; //step in which the motor is
 volatile float angle = 0; //value of the angle the motor has to be at any time
 volatile int step = 0;
 volatile int counter;
@@ -100,13 +100,13 @@ volatile int flag_end_movement = 0;
 // Angle constants
 float max_angle = 55; //max sweeping angle
 float min_angle = -55; //min sweeping angle
-float FC1_angle = -62;
-float FC2_angle = 66.7;
+float FC1_angle = -62; //security angle
+float FC2_angle = 66.7; //calibration angle
 float increment = 0.5;
 
 // Timer constants
 
-uint32_t sweep_time = 100; // s
+uint32_t sweep_time = 50; // s
 
 //Initialization parameters
 
@@ -262,6 +262,7 @@ void update_pos(){
 
 void motor_move(float angle_to_go){
 	update_pos();
+
 	if (angle_to_go > angle){
 		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, SET);
 	    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, RESET);
@@ -270,6 +271,7 @@ void motor_move(float angle_to_go){
 		BSP_MotorControl_WaitWhileActive(0);
 		update_pos();
 	}
+
 	else if (angle_to_go < angle){
 		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, RESET);
 		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, SET);
@@ -334,6 +336,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
 	  if (state == 0){ //First calibration
 		  BSP_MotorControl_SetMaxSpeed(0, 800);
 		  BSP_MotorControl_SetMinSpeed(0, 800);
@@ -345,9 +348,6 @@ int main(void)
 		  BSP_MotorControl_SetMaxSpeed(0, 300);
 		  BSP_MotorControl_SetMinSpeed(0, 300);
 		  if (sweep == 1){
-
-			  //Get the signal of movement out for the datalogger
-
 
 			  if (direction == 1){
 
@@ -375,26 +375,24 @@ int main(void)
 		  else{
 
 		  }
-
 	  }
+
 	  else if (state == 2){ //calibration FC
 		  angle = FC2_angle;
-
-		  BSP_MotorControl_SetHome(0, pos - angle_to_step(FC2_angle));
 		  pos = BSP_MotorControl_GetPosition(0);
+		  BSP_MotorControl_SetHome(0, pos - angle_to_step(FC2_angle));
+		  update_pos();
 
+		  // Start timer
 		  HAL_TIM_Base_Start_IT(&htim10);
-
 		  state = 1;
-
-
 	  }
+
 	  else if (state == 3){ //secutiry FC
 		  angle = FC1_angle;
 		  HAL_TIM_Base_Stop_IT(&htim10);
-
-
 	  }
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
