@@ -324,8 +324,15 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   //Driver initialisation
-  BSP_MotorControl_SetNbDevices(BSP_MOTOR_CONTROL_BOARD_ID_L6474, 1);
+  BSP_MotorControl_SetNbDevices(BSP_MOTOR_CONTROL_BOARD_ID_L6474, 3);
+
+  /* Initialisation of first device */
   BSP_MotorControl_Init(BSP_MOTOR_CONTROL_BOARD_ID_L6474, &gL6474InitParams);
+  /* Initialisation of second device */
+  BSP_MotorControl_Init(BSP_MOTOR_CONTROL_BOARD_ID_L6474, &gL6474InitParams);
+  /* Initialisation of third device */
+  BSP_MotorControl_Init(BSP_MOTOR_CONTROL_BOARD_ID_L6474, &gL6474InitParams);
+
   BSP_MotorControl_AttachFlagInterrupt(MyFlagInterruptHandler);
   BSP_MotorControl_AttachErrorHandler(ErrorHandler_Shield);
   state = 0;
@@ -378,9 +385,16 @@ int main(void)
 	  }
 
 	  else if (state == 2){ //calibration FC
+
+		  //Set angle and step parameters
 		  angle = FC2_angle;
 		  pos = BSP_MotorControl_GetPosition(0);
 		  BSP_MotorControl_SetHome(0, pos - angle_to_step(FC2_angle));
+		  update_pos();
+
+		  //Move motors to starting position
+		  BSP_MotorControl_GoTo(0, angle_to_step(max_angle));
+		  BSP_MotorControl_WaitWhileActive(0);
 		  update_pos();
 
 		  // Start timer

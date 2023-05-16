@@ -13,8 +13,14 @@ from pvlib import tracking, location
 import datalogger as dl
 import numpy as np
 
-# Import dataframe
+# Global variables
+gcr = 0.27
+max_angle = 55
+
+# Import dataframes
 data = filedialog.askopenfile()
+
+# First, datalogger data
 df = pd.read_csv(data,
                  sep=",", # two types of separation
                  header = 0, # first row used as index
@@ -26,20 +32,21 @@ df = pd.read_csv(data,
 location = location.Location(latitude = 40.453201, 
                              longitude = -3.726968)
 
+# Second, meteodata
 meteodata = dl.data_import('meteodata')
 
-
 # Empty processed dataframe
-processed_df = pd.DataFrame()
-backtrack_df = pd.DataFrame({})
+processed_df = pd.DataFrame(columns = ['max power', 'max angle', 'ghi', 'dni'])
+# processed_df = pd.DataFrame(columns = ['max power', 'max angle', 'ghi'])
 
-# Backtrack angle
+# Sun tracking
 weather_data = meteodata.loc[df.index]
 sun_data = location.get_solarposition(times = df.index)
-tracker = tracking.SingleAxisTrackerMount(backtrack = True, 
-                                          gcr = 0.27,
-                                          max_angle = 55)
+tracker = tracking.SingleAxisTrackerMount(backtrack = False, 
+                                          gcr = gcr,
+                                          max_angle = max_angle)
 
+weather_data.index = df.index
 backtrack_angle = tracker.get_orientation(solar_zenith = sun_data['apparent_zenith'],
                                            solar_azimuth = sun_data['azimuth'])
 
@@ -57,10 +64,22 @@ for i in df.index:
 for i in range(0, int(df['group'].max())):
     
     data = pd.DataFrame(df.loc[df['group'] == i])
-    max_power = data['power_value'].max()
-    max_angle = data['angle'].loc[data['power_value'] == max_power]   
-    backtrack = backtrack_angle['tracker_theta'].loc[max_angle.index]
     
-    # closest_index = (data['angle'] - backtrack).abs().idxmin()
+    # Max data
+    max_power = data['power_value'].max()
+    maximum_power = data['power_value'].loc[data['power_value'] == max_power]  
+    max_angle = data['angle'].loc[data['power_value'] == max_power]   
+    surface_tilt = backtrack_angle['tracker_theta'].loc[max_angle.index]
+    
+    new_data = pd.DataFrame()
+    new_data['max power'] = maximum_power
+    new_data['max angle'] = max_angle
+    new_data['ghi'] = weather_data['Gh'].loc[max_angle.index]
+    new_data['dni'] = weather_data['Dh'].loc[max_angle.index]
+    new_data['tilt'] = surface_tilt
+    
+    processed_df = pd.concat([processed_df, new_data])
+    
+    
 
 
