@@ -213,12 +213,18 @@ void MyFlagInterruptHandler(void)
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 
 	if(GPIO_Pin == GPIO_PIN_2){ //Left FC
-		BSP_MotorControl_HardStop(0); //Motor HardStop
+		//Motor HardStop
+		BSP_MotorControl_HardStop(0);
+		BSP_MotorControl_HardStop(1);
+		BSP_MotorControl_HardStop(2);
 		state = 2;
 
 	}
 	else if(GPIO_Pin == GPIO_PIN_1){ //Right FC
-		BSP_MotorControl_HardStop(0); //Motor HardStop
+		//Motor HardStop
+		BSP_MotorControl_HardStop(0);
+		BSP_MotorControl_HardStop(1);
+		BSP_MotorControl_HardStop(2);
 		state = 3;
 
 	}
@@ -268,7 +274,11 @@ void motor_move(float angle_to_go){
 	    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, RESET);
 
 		BSP_MotorControl_Move(0, FORWARD, 1);
+		BSP_MotorControl_Move(1, FORWARD, 1);
+		BSP_MotorControl_Move(2, FORWARD, 1);
 		BSP_MotorControl_WaitWhileActive(0);
+		BSP_MotorControl_WaitWhileActive(1);
+		BSP_MotorControl_WaitWhileActive(2);
 		update_pos();
 	}
 
@@ -277,7 +287,11 @@ void motor_move(float angle_to_go){
 		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, SET);
 
 		BSP_MotorControl_Move(0, BACKWARD, 1);
+		BSP_MotorControl_Move(1, BACKWARD, 1);
+		BSP_MotorControl_Move(2, BACKWARD, 1);
 		BSP_MotorControl_WaitWhileActive(0);
+		BSP_MotorControl_WaitWhileActive(1);
+		BSP_MotorControl_WaitWhileActive(2);
 		update_pos();
 	}
 	else {
@@ -304,7 +318,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-    HAL_Init();
+     HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -348,7 +362,11 @@ int main(void)
 		  BSP_MotorControl_SetMaxSpeed(0, 800);
 		  BSP_MotorControl_SetMinSpeed(0, 800);
 		  BSP_MotorControl_Move(0, FORWARD, 1);//Forward == Towards calibration FC
+		  BSP_MotorControl_Move(1, FORWARD, 1);
+		  BSP_MotorControl_Move(2, FORWARD, 1);
 		  BSP_MotorControl_WaitWhileActive(0);
+		  BSP_MotorControl_WaitWhileActive(1);
+		  BSP_MotorControl_WaitWhileActive(2);
 		  update_pos();
 	  }
 	  else if (state == 1){ //Normal behaviour
@@ -394,7 +412,11 @@ int main(void)
 
 		  //Move motors to starting position
 		  BSP_MotorControl_GoTo(0, angle_to_step(max_angle));
+		  BSP_MotorControl_GoTo(1, angle_to_step(max_angle));
+		  BSP_MotorControl_GoTo(2, angle_to_step(max_angle));
 		  BSP_MotorControl_WaitWhileActive(0);
+		  BSP_MotorControl_WaitWhileActive(1);
+		  BSP_MotorControl_WaitWhileActive(2);
 		  update_pos();
 
 		  // Start timer
