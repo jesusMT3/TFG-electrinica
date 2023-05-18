@@ -106,7 +106,7 @@ float increment = 0.5;
 
 // Timer constants
 
-uint32_t sweep_time = 3; // s
+uint32_t sweep_time = 50; // s
 
 //Initialization parameters
 
@@ -410,6 +410,7 @@ int main(void)
 		  BSP_MotorControl_SetHome(0, pos - angle_to_step(FC2_angle));
 		  update_pos();
 
+		  /*
 		  //Move motors to starting position
 		  BSP_MotorControl_GoTo(0, angle_to_step(max_angle));
 		  BSP_MotorControl_GoTo(1, angle_to_step(max_angle));
@@ -422,6 +423,7 @@ int main(void)
 		  // Start timer
 		  HAL_TIM_Base_Start_IT(&htim10);
 		  state = 1;
+		  */
 	  }
 
 	  else if (state == 3){ //secutiry FC
