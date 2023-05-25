@@ -98,15 +98,15 @@ volatile int flag_end_movement = 0;
  * */
 
 // Angle constants
-float max_angle = 55; //max sweeping angle
-float min_angle = -55; //min sweeping angle
-float FC1_angle = -56.7; //security angle
-float FC2_angle = 56.7; //calibration angle
+float max_angle = 50; //max sweeping angle
+float min_angle = -50; //min sweeping angle
+float FC1_angle = -55.1; //security angle
+float FC2_angle = 55.1; //calibration angle
 float increment = 0.5;
 
 // Timer constants
 
-uint32_t sweep_time = 3; // s
+uint32_t sweep_time = 300; // s
 
 //Initialization parameters
 
@@ -318,7 +318,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-     HAL_Init();
+  HAL_Init();
 
   /* USER CODE BEGIN Init */
 

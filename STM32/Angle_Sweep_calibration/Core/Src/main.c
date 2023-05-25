@@ -252,12 +252,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 
 
 float angle_to_step(float angle){
-	float conversion = angle * 164.8;
+	float conversion = angle * 168.8889;
 	return conversion;
 }
 
 float step_to_angle(float step){
-	float conversion = angle / 164.8;
+	float conversion = angle / 168.8889;
 	return conversion;
 }
 
@@ -318,7 +318,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-     HAL_Init();
+      HAL_Init();
 
   /* USER CODE BEGIN Init */
 

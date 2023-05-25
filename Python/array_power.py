@@ -27,7 +27,7 @@ sys = BW + FW + BE + FE
 # Module, system and cell initialization
 
 module = pvm.PVmodule(cell_pos = pvm.pvmismatch_lib.pvmodule.STD72)
-system = pvm.PVsystem(numberMods=1,numberStrs=2, pvmods = module)
+system = pvm.PVsystem(numberMods=2,numberStrs=1, pvmods = module)
 n = 0
 m = 0
 
@@ -64,7 +64,7 @@ def main():
     filtered_data['CH18'] = data['CH18']
     
     # Delete data without info on ch17 or ch18
-    threshold = 100
+    threshold = 1
     filtered_data = filtered_data[(filtered_data['CH17'] > threshold) ^ (filtered_data['CH18'] > threshold)]
     
     # Create angle column
@@ -242,11 +242,11 @@ def calc_power(x, plate_west, plate_east, system, m, n):
     irr_east[irr_east <= 0] = 0.001
 
     # For two modules in parallel
-    dict_suns = {0: {0: irr_west},
-                 1: {0: irr_east}}
+    # dict_suns = {0: {0: irr_west},
+    #              1: {0: irr_east}}
     
     # For two modules in series
-    # dict_suns = {0: {0: irr_west, 1: irr_east}}
+    dict_suns = {0: {0: irr_west, 1: irr_east}}
     
     # Set irradiance 
     system.setSuns(dict_suns)
