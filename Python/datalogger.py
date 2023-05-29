@@ -52,22 +52,8 @@ cols2 = ['yyyy/mm/dd hh:mm','Temp. Ai 1','Bn','Gh','Dh','Celula Top','Celula Mid
 # CH3 : V(G) = 0.1617 * G + 1.4087. Error: 0.0004 %
 # CH4 : V(G) = 0.1636 * G + 3.0349. Error: 0.0004 %
 
-irr_coef = [0.1638,
-            0.1722,
-            0.1697,
-            0.1711,
-            0.1697,
-            0.1666,
-            0.1746,
-            0.1742,
-            0.1517,
-            0.1529,
-            0.1502,
-            0.1560,
-            0.1644,
-            0.1644,
-            0.1617,
-            0.1636]
+irr_coef = [0.1638, 0.1722, 0.1697, 0.1711, 0.1697, 0.1666, 0.1746, 0.1742,
+            0.1517, 0.1529, 0.1502, 0.1560, 0.1644, 0.1644, 0.1617, 0.1636]
 
 def datalogger_import():
 
@@ -153,9 +139,6 @@ def datalogger_filter(df, mean_coeff, irr_coef, ch_temp):
   
         except KeyError:
             continue
-    
-    #if there was a hour change (e.g. summer in Spain)
-    
     
     return filtered_data
     

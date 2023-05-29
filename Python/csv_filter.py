@@ -12,20 +12,32 @@ def filter_csv():
     # read original CSV file
     with open(selected_file, 'r') as file:
         csv_reader = csv.reader(file)
-        header = next(csv_reader) # save header row
+        
+        # Save header row
+        header = next(csv_reader) 
 
         # write new CSV file
         with open(file_path, 'w', newline='') as new_file:
             csv_writer = csv.writer(new_file)
-            csv_writer.writerow(header) # write header row
+            
+            # Write header row
+            csv_writer.writerow(header) 
 
             for row in csv_reader:
-                if row[1].startswith(date): # check if date matches
+                
+                # Check if date matches
+                if row[1].startswith(date): 
                     # get time from row
                     time = row[1][11:19]
-                    if time >= '06:00:00' and time <= '22:00:00': # check if time is within range
-                        csv_writer.writerow(row) # write row to new file
-                elif row[1][:10] > date: # stop reading if past last row with filter date
+                    
+                    # Check if time is within range
+                    if time >= '06:00:00' and time <= '22:00:00': 
+                        
+                        # Write row to new file
+                        csv_writer.writerow(row) 
+                        
+                # Stop reading if past last row with filter date        
+                elif row[1][:10] > date: 
                     break
 
     # change filter button text to "Done"

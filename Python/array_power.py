@@ -27,7 +27,13 @@ sys = BW + FW + BE + FE
 # Module, system and cell initialization
 
 module = pvm.PVmodule(cell_pos = pvm.pvmismatch_lib.pvmodule.STD72)
+
+# For 1V
 system = pvm.PVsystem(numberMods=2,numberStrs=1, pvmods = module)
+
+# For 2V
+# system = pvm.PVsystem(numberMods=1,numberStrs=2, pvmods = module)
+
 n = 0
 m = 0
 
@@ -150,9 +156,9 @@ def main():
     power['angle'] = filtered_data['angle']
     
     # # Plot specific data points
-    # iv_irr_data('2023-03-16 11:46:00')
-    # iv_irr_data('2023-03-16 11:47:00')
-    # iv_irr_data('2023-03-16 12:37:00')
+    iv_irr_data('2023-03-16 11:46:00')
+    iv_irr_data('2023-03-16 11:47:00')
+    iv_irr_data('2023-03-16 12:37:00')
     
     # Get more data to dataframe
     

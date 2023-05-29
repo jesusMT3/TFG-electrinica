@@ -106,7 +106,7 @@ float increment = 0.5;
 
 // Timer constants
 
-uint32_t sweep_time = 300; // s
+uint32_t sweep_time = 30; // s
 
 //Initialization parameters
 
@@ -115,10 +115,10 @@ L6474_Init_t gL6474InitParams =
 {
     160,                               /// Acceleration rate in step/s2. Range: (0..+inf).
     160,                               /// Deceleration rate in step/s2. Range: (0..+inf).
-    300,                              /// Maximum speed in step/s. Range: (30..10000].
-    300,                               ///Minimum speed in step/s. Range: [30..10000).
-    250,                               ///Torque regulation current in mA. (TVAL register) Range: 31.25mA to 4000mA.
-    750,                               ///Overcurrent threshold (OCD_TH register). Range: 375mA to 6000mA.
+    800,                              /// Maximum speed in step/s. Range: (30..10000].
+    800,                               ///Minimum speed in step/s. Range: [30..10000).
+    500,                               ///Torque regulation current in mA. (TVAL register) Range: 31.25mA to 4000mA.
+    1000,                               ///Overcurrent threshold (OCD_TH register). Range: 375mA to 6000mA.
     L6474_CONFIG_OC_SD_ENABLE,         ///Overcurrent shutwdown (OC_SD field of CONFIG register).
     L6474_CONFIG_EN_TQREG_TVAL_USED,   /// Torque regulation method (EN_TQREG field of CONFIG register).
     L6474_STEP_SEL_1_16,               /// Step selection (STEP_SEL field of STEP_MODE register).
@@ -405,19 +405,14 @@ int main(void)
 	  else if (state == 2){ //calibration FC
 
 		  //Set angle and step parameters
-		  angle = FC2_angle;
 		  pos = BSP_MotorControl_GetPosition(0);
 		  BSP_MotorControl_SetHome(0, pos - angle_to_step(FC2_angle));
 		  update_pos();
 
 		  //Move motors to starting position
-		  BSP_MotorControl_GoTo(0, angle_to_step(max_angle));
-		  BSP_MotorControl_GoTo(1, angle_to_step(max_angle));
-		  BSP_MotorControl_GoTo(2, angle_to_step(max_angle));
-		  BSP_MotorControl_WaitWhileActive(0);
-		  BSP_MotorControl_WaitWhileActive(1);
-		  BSP_MotorControl_WaitWhileActive(2);
-		  update_pos();
+		  while(angle > max_angle){
+			  motor_move(max_angle);
+		  }
 
 		  // Start timer
 		  HAL_TIM_Base_Start_IT(&htim10);
