@@ -18,11 +18,12 @@ import multiprocessing
 from tkinter import filedialog
 
 # Sensor distribution
-BW = ['CH1', 'CH2', 'CH3', 'CH4']
-FW = ['CH5', 'CH6', 'CH7', 'CH8']
-BE = ['CH9', 'CH10', 'CH11', 'CH12']
-FE = ['CH13', 'CH14', 'CH15', 'CH16']
-sys = BW + FW + BE + FE
+BE = ['CH1', 'CH2', 'CH3', 'CH4']
+FE = ['CH5', 'CH6', 'CH7', 'CH8']
+BW = ['CH9', 'CH10', 'CH11', 'CH12']
+FW = ['CH13', 'CH14', 'CH15', 'CH16']
+sys = BE + FE + BW + FW
+bifaciality = 0.75
 
 # Module, system and cell initialization
 
@@ -68,6 +69,7 @@ def main():
     
     filtered_data['CH17'] = data['CH17']
     filtered_data['CH18'] = data['CH18']
+    filtered_data['CH10'] = filtered_data['CH11']
     
     # Delete data without info on ch17 or ch18
     threshold = 1
@@ -95,7 +97,7 @@ def main():
             flag_ch17 = False
 
             # Create linspace of angles
-            angles = np.linspace(-55, 55, len(index_array))
+            angles = np.linspace(-50, 50, len(index_array))
             for j, index in enumerate(index_array):
                 filtered_data.at[index, 'angle'] = angles[j]
             
@@ -156,9 +158,9 @@ def main():
     power['angle'] = filtered_data['angle']
     
     # # Plot specific data points
-    iv_irr_data('2023-03-16 11:46:00')
-    iv_irr_data('2023-03-16 11:47:00')
-    iv_irr_data('2023-03-16 12:37:00')
+    # iv_irr_data('2023-03-16 11:46:00')
+    # iv_irr_data('2023-03-16 11:47:00')
+    # iv_irr_data('2023-03-16 12:37:00')
     
     # Get more data to dataframe
     
@@ -185,28 +187,28 @@ def create_plates_df(filtered_data):
         
         # Exterior sensor
         if i == 0 or i == 1:
-            plate_west[i] = filtered_data['W1'] + filtered_data['W5']
-            plate_east[i] = filtered_data['W9'] + filtered_data['W13']
+            plate_east[i] = filtered_data['W1'] + bifaciality * filtered_data['W5']
+            plate_west[i] = filtered_data['W9'] + bifaciality * filtered_data['W13']
             
         # Mid exterior sensor
         elif i == (m / 2) - 1:
-            plate_west[i] = filtered_data['W2'] + filtered_data['W6']
-            plate_east[i] = filtered_data['W10'] + filtered_data['W14']
+            plate_east[i] = filtered_data['W2'] + bifaciality * filtered_data['W6']
+            plate_west[i] = filtered_data['W10'] + bifaciality * filtered_data['W14']
             
         # Mid interior sensor
         elif i == (m / 2):
-            plate_west[i] = filtered_data['W3'] + filtered_data['W7']
-            plate_east[i] = filtered_data['W11'] + filtered_data['W15']
+            plate_east[i] = filtered_data['W3'] + bifaciality * filtered_data['W7']
+            plate_west[i] = filtered_data['W11'] + bifaciality * filtered_data['W15']
             
         # Interior sensor
         elif i == m - 1 or i == m - 2:
-            plate_west[i] = filtered_data['W4'] + filtered_data['W8']
-            plate_east[i] = filtered_data['W12'] + filtered_data['W16']
+            plate_east[i] = filtered_data['W4'] + bifaciality * filtered_data['W8']
+            plate_west[i] = filtered_data['W12'] + bifaciality * filtered_data['W16']
             
         # Spots without sensors (they will be interpolated)
         else:
-            plate_west[i] = np.empty(len(filtered_data)) * np.nan
             plate_east[i] = np.empty(len(filtered_data)) * np.nan
+            plate_west[i] = np.empty(len(filtered_data)) * np.nan
             
     # Set temperature data
     plate_west['T'] = filtered_data['CH19']
@@ -269,13 +271,18 @@ def calc_power(x, plate_west, plate_east, system, m, n):
 # Function which calculates IV curve of specific points in the data
 def iv_irr_data(hour):
     
+    global plates
     # Plot the IV curve
     x, power = calc_power(hour, plate_west, plate_east, system, m, n)
     
-    fig1 = plt.Figure()
-    fig1 = system.plotSys()
+    fig1 = plt.figure()
+    system.plotSys()
     fig1.tight_layout()
-
+    
+    fig2 = plt.figure(figsize = (10, 6))
+    plates = filtered_data[sys].loc[hour]
+    plt.bar(plates.index, plates[sys])
+    fig2.tight_layout()
 
 if __name__ == "__main__":
     main()
