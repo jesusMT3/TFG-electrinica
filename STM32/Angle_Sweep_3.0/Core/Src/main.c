@@ -106,7 +106,7 @@ float increment = 0.5;
 
 // Timer constants
 
-uint32_t sweep_time = 30; // s
+uint32_t sweep_time = 300; // s
 
 //Initialization parameters
 
