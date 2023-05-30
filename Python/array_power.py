@@ -97,7 +97,7 @@ def main():
             flag_ch17 = False
 
             # Create linspace of angles
-            angles = np.linspace(-50, 50, len(index_array))
+            angles = np.linspace(50, -50, len(index_array))
             for j, index in enumerate(index_array):
                 filtered_data.at[index, 'angle'] = angles[j]
             
@@ -108,7 +108,7 @@ def main():
             flag_ch18 = False
             
             # Create linspace of angles
-            angles = np.linspace(55, -55, len(index_array))
+            angles = np.linspace(-50, 50, len(index_array))
             for j, index in enumerate(index_array):
                 filtered_data.at[index, 'angle'] = angles[j]
             
@@ -165,17 +165,25 @@ def main():
     # Get more data to dataframe
     
     # Irradiance channels
-    power[sys] = filtered_data[sys]
-    power[sys] = power[sys].clip(lower=0.01)
+    for i in range (1, 17):
+        power['CH' + str(i)] = filtered_data['W' + str(i)]
+        power['CH' + str(i)] = power['CH' + str(i)].clip(lower=0.01)
     
     # Mismatch loss factor of the plates
-    power['Mismatch BW'] = power[BW].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)
-    power['Mismatch FW'] = power[FW].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)
     power['Mismatch BE'] = power[BE].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)
-    power['Mismatch FE'] = power[FE].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)       
+    power['Mismatch FE'] = power[FE].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)
+    power['Mismatch BW'] = power[BW].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)
+    power['Mismatch FW'] = power[FW].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)       
     
     # Save file
     file_path = filedialog.asksaveasfilename(defaultextension='.csv')
+    my_cols = ['power_value', 'angle', 'BE-exterior', 'BE-mid-exterior', 'BE-mid-interior', 'BE-interior',
+               'FE-exterior', 'FE-mid-exterior', 'FE-mid-interior', 'FE-interior',
+               'BW-exterior', 'BW-mid-exterior', 'BW-mid-interior', 'BW-interior',
+               'FW-exterior', 'FW-mid-exterior', 'FW-mid-interior', 'FW-interior',
+               'BE mismatch', 'FE mismatch', 'BW mismatch', 'FW mismatch']
+
+    power = power.rename(columns=dict(zip(power.columns, my_cols)))
     power.to_csv(file_path, index = True)
     
 # Place sensor data into a dataframe of all levels of irradiance
