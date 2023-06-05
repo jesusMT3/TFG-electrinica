@@ -79,8 +79,7 @@ volatile int sweep = 0;
 volatile int32_t pos = 0; //step in which the motor is
 volatile float angle = 0; //value of the angle the motor has to be at any time
 volatile int step = 0;
-volatile int counter = 0;
-volatile int counter_calibration = 0;
+volatile int counter;
 /*
  * 0: No step
  * 1: Step
@@ -107,7 +106,7 @@ float increment = 0.5;
 
 // Timer constants
 
-uint32_t sweep_time = 60; // s
+uint32_t sweep_time = 30; // s
 
 //Initialization parameters
 
@@ -271,6 +270,8 @@ void motor_move(float angle_to_go){
 	update_pos();
 
 	if (angle_to_go > angle){
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, SET);
+	    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, RESET);
 
 		BSP_MotorControl_Move(0, FORWARD, 1);
 		BSP_MotorControl_Move(1, FORWARD, 1);
@@ -282,6 +283,8 @@ void motor_move(float angle_to_go){
 	}
 
 	else if (angle_to_go < angle){
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, RESET);
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, SET);
 
 		BSP_MotorControl_Move(0, BACKWARD, 1);
 		BSP_MotorControl_Move(1, BACKWARD, 1);
@@ -367,49 +370,25 @@ int main(void)
 		  update_pos();
 	  }
 	  else if (state == 1){ //Normal behaviour
-		  BSP_MotorControl_SetMaxSpeed(0, 600);
-		  BSP_MotorControl_SetMinSpeed(0, 600);
 		  if (sweep == 1){
+			  BSP_MotorControl_SetMaxSpeed(0, 300);
+			  BSP_MotorControl_SetMinSpeed(0, 300);
 
-			  if (direction == 1){
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, SET);
 
-				  motor_move(min_angle);
-				  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, SET);
-				  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, RESET);
+			  //Move motors to second position
+			  update_pos();
+			  BSP_MotorControl_Move(0, BACKWARD, pos - angle_to_step(min_angle));
+			  BSP_MotorControl_Move(1, BACKWARD, pos - angle_to_step(min_angle));
+			  BSP_MotorControl_Move(2, BACKWARD, pos - angle_to_step(min_angle));
 
-				  if (flag_end_movement == 1){
-					  // movement finished -> reset and change direction
-					  flag_end_movement = 0;
-					  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, RESET);
-					  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, RESET);
-					  direction = -1;
-					  sweep = 0;
-					  counter_calibration++;
-				  }
-			  }
+			  BSP_MotorControl_WaitWhileActive(0);
+			  BSP_MotorControl_WaitWhileActive(1);
+			  BSP_MotorControl_WaitWhileActive(2);
 
-			  else if (direction == -1){
-
-				  motor_move(max_angle);
-				  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, RESET);
-				  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, SET);
-
-				  if (flag_end_movement == 1){
-					  // movement finished -> reset and change direction
-					  flag_end_movement = 0;
-					  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, RESET);
-					  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, RESET);
-					  direction = 1;
-					  sweep = 0;
-					  counter_calibration++;
-				  }
-			  }
-		  }
-		  if (counter_calibration > 10){
-
-			  counter_calibration = 0;
+			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, RESET);
+			  update_pos();
 			  state = 0;
-			  HAL_TIM_Base_Stop_IT(&htim10);
 		  }
 	  }
 
@@ -421,15 +400,17 @@ int main(void)
 		  update_pos();
 
 		  //Move motors to starting position
-		  while(angle > max_angle){
-			  motor_move(max_angle);
-		  }
+		  BSP_MotorControl_Move(0, BACKWARD, pos - angle_to_step(max_angle));
+		  BSP_MotorControl_Move(1, BACKWARD, pos - angle_to_step(min_angle));
+		  BSP_MotorControl_Move(2, BACKWARD, pos - angle_to_step(min_angle));
 
+		  BSP_MotorControl_WaitWhileActive(0);
+		  BSP_MotorControl_WaitWhileActive(1);
+		  BSP_MotorControl_WaitWhileActive(2);
+		  update_pos();
 		  // Start timer
 		  HAL_TIM_Base_Start_IT(&htim10);
 		  state = 1;
-		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, RESET);
-		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, RESET);
 	  }
 
 	  else if (state == 3){ //secutiry FC

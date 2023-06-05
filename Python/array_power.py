@@ -16,6 +16,7 @@ import pvmismatch as pvm
 import matplotlib.pyplot as plt
 import multiprocessing
 from tkinter import filedialog
+from datetime import timedelta
 
 # Sensor distribution
 BE = ['CH1', 'CH2', 'CH3', 'CH4']
@@ -30,10 +31,15 @@ bifaciality = 0.75
 module = pvm.PVmodule(cell_pos = pvm.pvmismatch_lib.pvmodule.STD72)
 
 # For 1V
-system = pvm.PVsystem(numberMods=2,numberStrs=1, pvmods = module)
+# system = pvm.PVsystem(numberMods=2,numberStrs=1, pvmods = module)
 
 # For 2V
-# system = pvm.PVsystem(numberMods=1,numberStrs=2, pvmods = module)
+system = pvm.PVsystem(numberMods=1,numberStrs=2, pvmods = module)
+
+#Normalized power
+system.setSuns(1)
+system.setTemps(298.15)
+normalized_power = system.Pmp
 
 n = 0
 m = 0
@@ -61,6 +67,9 @@ def main():
     # Import data from the datalogger
     data = dl.data_import('datalogger')
     
+    #Merge miliseconds
+    data.index = data.index + pd.to_timedelta(data[' ms'], unit='ms')
+    
     # Convert data to irradiance, temperature correction, and smoothing
     filtered_data = dl.datalogger_filter(df = data,
                                       mean_coeff = 1, 
@@ -69,7 +78,13 @@ def main():
     
     filtered_data['CH17'] = data['CH17']
     filtered_data['CH18'] = data['CH18']
+    
+    # Broken channels
     filtered_data['CH10'] = filtered_data['CH11']
+    filtered_data['CH7'] = filtered_data['CH6']
+    
+    #GHI
+    filtered_data['GHI'] = data['CH20'] * (1000/76.63)
     
     # Delete data without info on ch17 or ch18
     threshold = 1
@@ -85,15 +100,15 @@ def main():
     index_array = []
     
     for i in filtered_data.index:
-        if filtered_data['CH17'].loc[i] > threshold and filtered_data['CH18'].loc[i] < threshold:
+        if (filtered_data['CH17'].loc[i] > threshold).any() and (filtered_data['CH18'].loc[i] < threshold).any():
             flag_ch17 = True
             index_array.append(i)
             
-        elif filtered_data['CH18'].loc[i] > threshold and filtered_data['CH17'].loc[i] < threshold:
+        elif (filtered_data['CH18'].loc[i] > threshold).any() and (filtered_data['CH17'].loc[i] < threshold).any():
             flag_ch18 = True
             index_array.append(i)
             
-        if filtered_data['CH17'].loc[i] < threshold and flag_ch17 == True:
+        if (filtered_data['CH17'].loc[i] < threshold).any() and flag_ch17:
             flag_ch17 = False
 
             # Create linspace of angles
@@ -101,10 +116,14 @@ def main():
             for j, index in enumerate(index_array):
                 filtered_data.at[index, 'angle'] = angles[j]
             
+            #If there was an error
+            if len(index_array) < 8 or len(index_array) > 200:
+                filtered_data.at[index, 'angle'] = 0
+                
             # Reset array of indexes
             index_array = []
             
-        elif filtered_data['CH18'].loc[i] < threshold and flag_ch18 == True:
+        elif (filtered_data['CH18'].loc[i] < threshold).any() and flag_ch18:
             flag_ch18 = False
             
             # Create linspace of angles
@@ -112,8 +131,14 @@ def main():
             for j, index in enumerate(index_array):
                 filtered_data.at[index, 'angle'] = angles[j]
             
+            #If there was an error
+            if len(index_array) < 8 or len(index_array) > 200:
+                filtered_data.at[index, 'angle'] = 180
+                
             # Reset array of indexes
             index_array = []
+            
+    filtered_data = filtered_data[filtered_data['angle']<90]
 
     # Create all plate irradiance levels through interpolation
     plate_west, plate_east = create_plates_df(filtered_data)
@@ -137,6 +162,7 @@ def main():
         # Rearrange results into a dataframe
         results = pd.DataFrame(results, columns = ['DateTime', 'power_value'])
         power = pd.DataFrame(results['power_value'])
+        power /= normalized_power
         power.index = results['DateTime']
         
         # Save CSV file with the data obtained
@@ -156,8 +182,9 @@ def main():
     
     # Add angles
     power['angle'] = filtered_data['angle']
+    power['GHI'] = filtered_data['GHI']
     
-    # # Plot specific data points
+    # Plot specific data points
     # iv_irr_data('2023-03-16 11:46:00')
     # iv_irr_data('2023-03-16 11:47:00')
     # iv_irr_data('2023-03-16 12:37:00')
@@ -177,11 +204,11 @@ def main():
     
     # Save file
     file_path = filedialog.asksaveasfilename(defaultextension='.csv')
-    my_cols = ['power_value', 'angle', 'BE-exterior', 'BE-mid-exterior', 'BE-mid-interior', 'BE-interior',
-               'FE-exterior', 'FE-mid-exterior', 'FE-mid-interior', 'FE-interior',
-               'BW-exterior', 'BW-mid-exterior', 'BW-mid-interior', 'BW-interior',
-               'FW-exterior', 'FW-mid-exterior', 'FW-mid-interior', 'FW-interior',
-               'BE mismatch', 'FE mismatch', 'BW mismatch', 'FW mismatch']
+    my_cols = ['power_value', 'angle', 'GHI', 'BE-exterior', 'BE-mid-exterior', 'BE-mid-interior', 'BE-interior',
+                'FE-exterior', 'FE-mid-exterior', 'FE-mid-interior', 'FE-interior',
+                'BW-exterior', 'BW-mid-exterior', 'BW-mid-interior', 'BW-interior',
+                'FW-exterior', 'FW-mid-exterior', 'FW-mid-interior', 'FW-interior',
+                'BE mismatch', 'FE mismatch', 'BW mismatch', 'FW mismatch']
 
     power = power.rename(columns=dict(zip(power.columns, my_cols)))
     power.to_csv(file_path, index = True)
@@ -258,11 +285,11 @@ def calc_power(x, plate_west, plate_east, system, m, n):
     irr_east[irr_east <= 0] = 0.001
 
     # For two modules in parallel
-    # dict_suns = {0: {0: irr_west},
-    #              1: {0: irr_east}}
+    dict_suns = {0: {0: irr_west},
+                  1: {0: irr_east}}
     
     # For two modules in series
-    dict_suns = {0: {0: irr_west, 1: irr_east}}
+    # dict_suns = {0: {0: irr_west, 1: irr_east}}
     
     # Set irradiance 
     system.setSuns(dict_suns)

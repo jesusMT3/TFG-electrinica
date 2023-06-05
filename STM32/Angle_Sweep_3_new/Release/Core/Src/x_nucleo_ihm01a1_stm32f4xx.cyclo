@@ -1,0 +1,14 @@
+x_nucleo_ihm01a1_stm32f4xx.c:101:6:L6474_Board_Delay	1
+x_nucleo_ihm01a1_stm32f4xx.c:110:6:L6474_Board_DisableIrq	1
+x_nucleo_ihm01a1_stm32f4xx.c:119:6:L6474_Board_EnableIrq	1
+x_nucleo_ihm01a1_stm32f4xx.c:207:6:L6474_Board_Pwm1SetFreq	1
+x_nucleo_ihm01a1_stm32f4xx.c:223:6:L6474_Board_Pwm2SetFreq	1
+x_nucleo_ihm01a1_stm32f4xx.c:238:6:L6474_Board_Pwm3SetFreq	1
+x_nucleo_ihm01a1_stm32f4xx.c:257:6:L6474_Board_PwmInit	3
+x_nucleo_ihm01a1_stm32f4xx.c:309:6:L6474_Board_PwmStop	4
+x_nucleo_ihm01a1_stm32f4xx.c:335:6:L6474_Board_ReleaseReset	1
+x_nucleo_ihm01a1_stm32f4xx.c:345:6:L6474_Board_Reset	1
+x_nucleo_ihm01a1_stm32f4xx.c:129:6:L6474_Board_GpioInit	5
+x_nucleo_ihm01a1_stm32f4xx.c:356:6:L6474_Board_SetDirectionGpio	4
+x_nucleo_ihm01a1_stm32f4xx.c:378:9:L6474_Board_SpiInit	1
+x_nucleo_ihm01a1_stm32f4xx.c:408:9:L6474_Board_SpiWriteBytes	3

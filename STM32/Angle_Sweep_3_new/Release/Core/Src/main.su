@@ -1,0 +1,12 @@
+../Core/Src/main.c:629:6:ErrorHandler_Shield	0	static
+../Core/Src/main.c:142:6:MyFlagInterruptHandler	0	static
+../Core/Src/main.c:213:6:HAL_GPIO_EXTI_Callback	8	static
+../Core/Src/main.c:238:6:HAL_TIM_PeriodElapsedCallback	0	static
+../Core/Src/main.c:254:7:angle_to_step	8	static
+../Core/Src/main.c:259:7:step_to_angle	8	static
+../Core/Src/main.c:264:6:update_pos	8	static
+../Core/Src/main.c:269:6:motor_move	16	static
+../Core/Src/main.c:433:6:SystemClock_Config	96	static,ignoring_inline_asm
+../Core/Src/main.c:312:5:main	56	static,ignoring_inline_asm
+../Core/Src/main.c:620:5:_write	12	static,ignoring_inline_asm
+../Core/Src/main.c:646:6:Error_Handler	0	static,ignoring_inline_asm

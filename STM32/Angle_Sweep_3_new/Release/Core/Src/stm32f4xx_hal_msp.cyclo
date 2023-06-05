@@ -1,0 +1,10 @@
+stm32f4xx_hal_msp.c:64:6:HAL_MspInit	1
+stm32f4xx_hal_msp.c:88:6:HAL_RTC_MspInit	3
+stm32f4xx_hal_msp.c:121:6:HAL_RTC_MspDeInit	2
+stm32f4xx_hal_msp.c:143:6:HAL_TIM_Base_MspInit	2
+stm32f4xx_hal_msp.c:168:6:HAL_TIM_Base_MspDeInit	2
+stm32f4xx_hal_msp.c:188:6:HAL_SPI_MspInit	2
+stm32f4xx_hal_msp.c:234:6:HAL_SPI_MspDeInit	2
+stm32f4xx_hal_msp.c:257:6:HAL_TIM_PWM_MspInit	4
+stm32f4xx_hal_msp.c:324:6:HAL_TIM_PWM_MspDeInit	4
+stm32f4xx_hal_msp.c:359:6:HAL_TIM_PWM_PulseFinishedCallback	11
