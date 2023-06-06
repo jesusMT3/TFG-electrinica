@@ -118,10 +118,13 @@ def main():
             angles = np.linspace(-50, 50, len(index_array))
             for j, index in enumerate(index_array):
                 filtered_data.at[index, 'angle'] = angles[j]
+<<<<<<< HEAD
                 
             #If there was an error
             if len(index_array) < 8 or len(index_array) > 200:
                 filtered_data.at[index, 'angle'] = 180
+=======
+>>>>>>> b6da696bdedaed7ad5833937dbb9ce05fca50044
                 
             # Reset array of indexes
             index_array = []
@@ -133,10 +136,13 @@ def main():
             angles = np.linspace(50, -50, len(index_array))
             for j, index in enumerate(index_array):
                 filtered_data.at[index, 'angle'] = angles[j]
+<<<<<<< HEAD
                 
             #If there was an error
             if len(index_array) < 8 or len(index_array) > 200:
                 filtered_data.at[index, 'angle'] = 180
+=======
+>>>>>>> b6da696bdedaed7ad5833937dbb9ce05fca50044
                 
             # Reset array of indexes
             index_array = []
