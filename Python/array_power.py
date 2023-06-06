@@ -41,6 +41,7 @@ system.setSuns(1)
 system.setTemps(298.15)
 normalized_power = system.Pmp
 
+# Number of rows and columns in a module
 n = 0
 m = 0
 
@@ -51,6 +52,7 @@ m = module.numberCells
 m /= n
 m = int(m)
 
+# Initialize variables
 power = None
 REPROCESS_ARRAY = True
 
@@ -67,6 +69,10 @@ def main():
     # Import data from the datalogger
     data = dl.data_import('datalogger')
     
+    # Broken channels
+    data['CH10'] = data['CH11']
+    data['CH7'] = data['CH6']
+    
     #Merge miliseconds
     data.index = data.index + pd.to_timedelta(data[' ms'], unit='ms')
     
@@ -76,13 +82,10 @@ def main():
                                       irr_coef = dl.irr_coef, 
                                       ch_temp = 'CH19')
     
+    # Logic sweep channels
     filtered_data['CH17'] = data['CH17']
     filtered_data['CH18'] = data['CH18']
-    
-    # Broken channels
-    filtered_data['CH10'] = filtered_data['CH11']
-    filtered_data['CH7'] = filtered_data['CH6']
-    
+
     #GHI
     filtered_data['GHI'] = data['CH20'] * (1000/76.63)
     
@@ -112,13 +115,13 @@ def main():
             flag_ch17 = False
 
             # Create linspace of angles
-            angles = np.linspace(50, -50, len(index_array))
+            angles = np.linspace(-50, 50, len(index_array))
             for j, index in enumerate(index_array):
                 filtered_data.at[index, 'angle'] = angles[j]
-            
+                
             #If there was an error
             if len(index_array) < 8 or len(index_array) > 200:
-                filtered_data.at[index, 'angle'] = 0
+                filtered_data.at[index, 'angle'] = 180
                 
             # Reset array of indexes
             index_array = []
@@ -127,10 +130,10 @@ def main():
             flag_ch18 = False
             
             # Create linspace of angles
-            angles = np.linspace(-50, 50, len(index_array))
+            angles = np.linspace(50, -50, len(index_array))
             for j, index in enumerate(index_array):
                 filtered_data.at[index, 'angle'] = angles[j]
-            
+                
             #If there was an error
             if len(index_array) < 8 or len(index_array) > 200:
                 filtered_data.at[index, 'angle'] = 180
@@ -185,9 +188,9 @@ def main():
     power['GHI'] = filtered_data['GHI']
     
     # Plot specific data points
-    # iv_irr_data('2023-03-16 11:46:00')
-    # iv_irr_data('2023-03-16 11:47:00')
-    # iv_irr_data('2023-03-16 12:37:00')
+    iv_irr_data('2023-03-16 11:46:00')
+    iv_irr_data('2023-03-16 11:47:00')
+    iv_irr_data('2023-03-16 11:48:00')
     
     # Get more data to dataframe
     
@@ -310,14 +313,16 @@ def iv_irr_data(hour):
     # Plot the IV curve
     x, power = calc_power(hour, plate_west, plate_east, system, m, n)
     
-    fig1 = plt.figure()
-    system.plotSys()
+    
+    fig1 = plt.figure(figsize = (10, 6))
+    system.plotSys(sysPlot = fig1)
     fig1.tight_layout()
     
     fig2 = plt.figure(figsize = (10, 6))
     plates = filtered_data[sys].loc[hour]
     plt.bar(plates.index, plates[sys])
     fig2.tight_layout()
+    print(f'{hour}\n Pmp = {system.Pmp} W. \n Voc = {system.Voc} V. \n Isc = {system.Isc} A.')
 
 if __name__ == "__main__":
     main()

@@ -76,7 +76,9 @@ volatile int sweep = 0;
  * 0: No sweep
  * 1: Sweep
  * */
-volatile int32_t pos = 0; //step in which the motor is
+volatile int32_t pos0 = 0; //step in which the motor is
+volatile int32_t pos1 = 0; //step in which the motor is
+volatile int32_t pos2 = 0; //step in which the motor is
 volatile float angle = 0; //value of the angle the motor has to be at any time
 volatile int step = 0;
 volatile int counter = 0;
@@ -249,6 +251,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	  }
 	}
 
+
+
 }
 
 
@@ -263,8 +267,10 @@ float step_to_angle(float step){
 }
 
 void update_pos(){
-	pos = BSP_MotorControl_GetPosition(0);
-    angle = pos / 164.8;
+	pos0 = BSP_MotorControl_GetPosition(0);
+	pos1 = BSP_MotorControl_GetPosition(1);
+	pos2 = BSP_MotorControl_GetPosition(2);
+    angle = pos0 / 164.8;
 }
 
 void motor_move(float angle_to_go){
@@ -405,19 +411,36 @@ int main(void)
 				  }
 			  }
 		  }
-		  if (counter_calibration > 10){
+		  if (counter_calibration > 50){
 
 			  counter_calibration = 0;
-			  state = 0;
+			  counter = 0;
+
 			  HAL_TIM_Base_Stop_IT(&htim10);
+			  BSP_MotorControl_GoHome(0);
+			  BSP_MotorControl_GoHome(1);
+			  BSP_MotorControl_GoHome(2);
+			  BSP_MotorControl_WaitWhileActive(0);
+			  BSP_MotorControl_WaitWhileActive(1);
+			  BSP_MotorControl_WaitWhileActive(2);
+			  update_pos();
+
+			  state = 0;
 		  }
 	  }
 
 	  else if (state == 2){ //calibration FC
 
+		  // Start timer
+		  HAL_TIM_Base_Start_IT(&htim10);
+
 		  //Set angle and step parameters
-		  pos = BSP_MotorControl_GetPosition(0);
-		  BSP_MotorControl_SetHome(0, pos - angle_to_step(FC2_angle));
+		  pos0 = BSP_MotorControl_GetPosition(0);
+		  pos1 = BSP_MotorControl_GetPosition(1);
+		  pos2 = BSP_MotorControl_GetPosition(2);
+		  BSP_MotorControl_SetHome(0, pos0 - angle_to_step(FC2_angle));
+		  BSP_MotorControl_SetHome(1, pos1 - angle_to_step(FC2_angle));
+		  BSP_MotorControl_SetHome(2, pos2 - angle_to_step(FC2_angle));
 		  update_pos();
 
 		  //Move motors to starting position
@@ -425,8 +448,7 @@ int main(void)
 			  motor_move(max_angle);
 		  }
 
-		  // Start timer
-		  HAL_TIM_Base_Start_IT(&htim10);
+		  // Go to state 1
 		  state = 1;
 		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, RESET);
 		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, RESET);
