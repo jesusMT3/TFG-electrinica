@@ -215,7 +215,7 @@ void MyFlagInterruptHandler(void)
 //Interruptions Callback
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 
-	if(GPIO_Pin == GPIO_PIN_2){ //Left FC
+	if(GPIO_Pin == GPIO_PIN_2){ //Left FC standing at the north
 		//Motor HardStop
 		BSP_MotorControl_HardStop(0);
 		BSP_MotorControl_HardStop(1);
@@ -223,7 +223,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 		state = 2;
 
 	}
-	else if(GPIO_Pin == GPIO_PIN_1){ //Right FC
+	else if(GPIO_Pin == GPIO_PIN_1){ //Right FC standing at the north
 		//Motor HardStop
 		BSP_MotorControl_HardStop(0);
 		BSP_MotorControl_HardStop(1);
@@ -248,6 +248,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	  if (counter >= sweep_time){
 		  sweep = 1; //start sweeping
 		  counter = 0;
+
+		  // If it's still in state 2 something went wrong
+		  if (state == 2){
+			  state = 0;
+			  BSP_MotorControl_GoHome(0);
+			  BSP_MotorControl_GoHome(1);
+			  BSP_MotorControl_GoHome(2);
+		  }
 	  }
 	}
 
@@ -457,6 +465,7 @@ int main(void)
 	  else if (state == 3){ //secutiry FC
 		  angle = FC1_angle;
 		  HAL_TIM_Base_Stop_IT(&htim10);
+		  state = 0;
 	  }
 
     /* USER CODE END WHILE */

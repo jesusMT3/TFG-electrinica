@@ -8,14 +8,23 @@ Created on Sat May  6 11:18:40 2023
 # Import libraries
 from tkinter import filedialog
 import pandas as pd
-import matplotlib.pyplot as plt
 from pvlib import tracking, location
 import numpy as np
 from datetime import timedelta
+import datalogger as dl
+
 
 # Global variables
 gcr = 0.27
 max_angle = 50
+
+# Sensor distribution
+BE = ['BE-exterior', 'BE-mid-exterior', 'BE-mid-interior', 'BE-interior']
+FE = ['FE-exterior', 'FE-mid-exterior', 'FE-mid-interior', 'FE-interior']
+BW = ['BW-exterior', 'BW-mid-exterior', 'BW-mid-interior', 'BW-interior']
+FW = ['FW-exterior', 'FW-mid-exterior', 'FW-mid-interior', 'FW-interior']
+sys = BE + FE + BW + FW
+bifaciality = 0.75
 
 # Import dataframes
 data = filedialog.askopenfile()
@@ -30,6 +39,9 @@ df = pd.read_csv(data,
                  index_col = 0)
 
 df.index = pd.to_datetime(df.index) 
+
+# Meteodata
+meteodata = dl.data_import('meteodata')
 
 # Location object for tracking data
 location = location.Location(latitude = 40.453201, 
@@ -76,94 +88,53 @@ for i in range(1, int(df['group'].max())):
     # Tracker data
     diff = abs(data['angle'] - float(tilt))
     nearest_index = diff.idxmin()
-    tracker_power = data.loc[nearest_index, 'power_value']
+    ephemeris_data = data.loc[nearest_index]
     
     # Concat to processed_df
     new_data = pd.DataFrame()
-    new_data['max power'] = maximum_power
-    new_data['max angle'] = max_angle
+    new_data['optimal power'] = maximum_power
+    new_data['optimal power non bifacial'] = data['power_value_non_bif']
+    new_data['ephemeris power'] = ephemeris_data['power_value']
+    new_data['ephemeris power non bifacial'] = ephemeris_data['power_value_non_bif']
+    new_data['optimal angle'] = max_angle
+    new_data['tilt'] = tilt
     new_data['GHI'] = ghi / 1000
     new_data['dGHI'] = desv_ghi
-    new_data['tilt'] = tilt
-    new_data['tracker power'] = tracker_power
     
+    new_data[sys] = data[sys].loc[data['power_value'] == max_power]
+    new_data['BE'] = data['BE'].loc[data['power_value'] == max_power]
+    new_data['FE'] = data['FE'].loc[data['power_value'] == max_power]
+    new_data['BW'] = data['BW'].loc[data['power_value'] == max_power]
+    new_data['FW'] = data['FW'].loc[data['power_value'] == max_power]
+    
+    for i in sys:
+        new_data['ephemeris ' + i] = ephemeris_data[i]
+        
+    new_data['ephemeris BE'] = ephemeris_data['BE']
+    new_data['ephemeris FE'] = ephemeris_data['FE']
+    new_data['ephemeris BW'] = ephemeris_data['BW']
+    new_data['ephemeris FW'] = ephemeris_data['FW']
+
+    # Bifacial gains
+    new_data['Optimal Bifacial gains'] = 100 * ((new_data['optimal power'] - new_data['optimal power non bifacial']) / new_data['optimal power non bifacial'])
+    new_data['Optimal Bifacial gains irr'] = 100 * bifaciality * ((new_data['BE'] + new_data['BW']) / (new_data['FE'] + new_data['FW']))
+    
+    new_data['Ephemeris Bifacial gains'] = 100 * (new_data['ephemeris power'] - new_data['ephemeris power non bifacial'] / new_data['ephemeris power non bifacial'])
+    new_data['Ephemeris Bifacial gains irr'] = 100 * bifaciality * ((new_data['ephemeris BE'] + new_data['ephemeris BW']) / (new_data['ephemeris FE'] + new_data['ephemeris FW']))
+
     processed_df = pd.concat([processed_df, new_data])
     
 # Remove data with high GHi variability
 processed_df = processed_df[processed_df['dGHI'] < 0.03]
+processed_df.index = processed_df.index.floor('T')
 
-# Power gains
-total_diference = 100 * (processed_df['max power'].sum() - processed_df['tracker power'].sum())/processed_df['max power'].sum()
+# Ratio GHI/DHI
+processed_df['DHI/GHI'] = meteodata['Dh'].loc[processed_df.index] / meteodata['Gh'].loc[processed_df.index]
 
-# Plottings
+# More data
+processed_df['Wspeed'] = meteodata['V.Vien.1'].loc[processed_df.index]
+processed_df['Temp'] = meteodata['Temp. Ai 1'].loc[processed_df.index]
 
-# Power and ghi
-fig, ax1 = plt.subplots(figsize=(10, 6))
-ax1.scatter(processed_df.index, processed_df['max power'], color='blue', label='Pmax at optimum tilt')
-ax1.scatter(processed_df.index, processed_df['GHI'], color='red', label='Global Horizontal Irradiance')
-ax1.set_xlabel('Datetime')
-ax1.set_ylabel('Referenced at 1000W/m$^2$')
-ax1.set_title('Pmax at optimum tilt vs GHI')
-ax1.set_ylim([0, 1.2])
-ax1.legend(loc='best')
-ax1.tick_params(axis='x', rotation=45)
-plt.tight_layout()  # Adjust spacing between subplots
-plt.show()
-
-
-# Angle and tilt
-fig, ax2 = plt.subplots(figsize=(10, 6))
-
-# Scatter plot for optimum tilt
-ax2.scatter(processed_df.index, processed_df['max angle'], color='green', label='Optimum tilt')
-
-# Line plot for ephemeris tilt
-ax2.plot(processed_df.index, processed_df['tilt'], color='orange', label='Ephemeris tilt')
-
-ax2.set_xlabel('Datetime')
-ax2.set_ylabel('Degrees [$º$]')
-ax2.set_ylim([-60, 60])
-ax2.set_title('Optimum tilt vs Ephemeris')
-ax2.legend(loc='best')
-ax2.tick_params(axis='x', rotation=45)
-
-# Create a twin Axes object
-ax2_1 = ax2.twinx()
-
-# Line plot for GHI
-ax2_1.scatter(processed_df.index, processed_df['GHI'], color='blue', label='Global Horizontal Irradiance')
-
-ax2_1.set_ylabel('Irradiance [Suns]')
-ax2_1.legend(loc='upper left')
-ax2_1.set_ylim([0, 1.5])
-
-plt.tight_layout()  # Adjust spacing between subplots
-plt.show()
-
-# Power difference
-fig, ax3 = plt.subplots(figsize=(10, 6))
-ax3.scatter(processed_df.index, processed_df['max power'], color='blue', label='Optimum tilt')
-ax3.scatter(processed_df.index, processed_df['tracker power'], color='orange', label='Ephemeris')
-ax3.set_xlabel('Datetime')
-ax3.set_ylabel('Energy')
-ax3.set_title(f'Energy gain: {total_diference:.2f}%')
-ax3.legend(loc='best')
-ax3.tick_params(axis='x', rotation=45)
-
-plt.tight_layout()  # Adjust spacing between subplots
-plt.show()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Save csv
+file_path = filedialog.asksaveasfilename(defaultextension='.csv')
+processed_df.to_csv(file_path, index = True)

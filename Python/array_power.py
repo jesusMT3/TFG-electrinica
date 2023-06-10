@@ -60,8 +60,8 @@ REPROCESS_ARRAY = True
 def main():
     
     # Global variables
-    global plate1, plate_west, plate_east
-    global results, suns
+    global plate_west, plate_east, plate_west_non_bif, plate_east_non_bif
+    global results, results_non_bif, suns
     global power, training_data
     global filtered_data
     global system
@@ -144,9 +144,11 @@ def main():
     filtered_data = filtered_data[filtered_data['angle']<90]
 
     # Create all plate irradiance levels through interpolation
-    plate_west, plate_east = create_plates_df(filtered_data)
+    plate_west, plate_east, plate_west_non_bif, plate_east_non_bif = create_plates_df(filtered_data)
     plate_west = plate_west.interpolate(method = 'linear', axis = 1)
     plate_east = plate_east.interpolate(method = 'linear', axis = 1)
+    plate_west_non_bif = plate_west_non_bif.interpolate(method = 'linear', axis = 1)
+    plate_east_non_bif = plate_east_non_bif.interpolate(method = 'linear', axis = 1)
     
     #To measure performance ratio of the system
     start_time = time.time()
@@ -158,13 +160,18 @@ def main():
             
             # Arguments of the calc_power function
             args = [(x, plate_west, plate_east, system, m, n) for x in filtered_data.index]
+            args_non_bif = [(x, plate_west_non_bif, plate_east_non_bif, system, m, n) for x in filtered_data.index]
             
             # Actual calculation of system power
             results = pool.starmap(calc_power, args)
+            results_non_bif = pool.starmap(calc_power, args_non_bif)
         
         # Rearrange results into a dataframe
         results = pd.DataFrame(results, columns = ['DateTime', 'power_value'])
-        power = pd.DataFrame(results['power_value'])
+        results_non_bif = pd.DataFrame(results_non_bif, columns = ['DateTime', 'power_value'])
+        power = pd.merge(results, results_non_bif, on='DateTime')
+        power.set_index('DateTime', inplace=True)
+        power.columns = ['power_value', 'power_value_non_bif']
         power /= normalized_power
         power.index = results['DateTime']
         
@@ -188,9 +195,7 @@ def main():
     power['GHI'] = filtered_data['GHI']
     
     # Plot specific data points
-    iv_irr_data('2023-03-16 11:46:00')
-    iv_irr_data('2023-03-16 11:47:00')
-    iv_irr_data('2023-03-16 11:48:00')
+    # iv_irr_data('2023-05-31 11:52:09')
     
     # Get more data to dataframe
     
@@ -198,6 +203,12 @@ def main():
     for i in range (1, 17):
         power['CH' + str(i)] = filtered_data['W' + str(i)]
         power['CH' + str(i)] = power['CH' + str(i)].clip(lower=0.01)
+    
+    # Mean irradiance
+    power['BE'] = power[BE].mean(axis = 1)
+    power['FE'] = power[FE].mean(axis = 1)
+    power['BW'] = power[BW].mean(axis = 1)
+    power['FW'] = power[FW].mean(axis = 1)
     
     # Mismatch loss factor of the plates
     power['Mismatch BE'] = power[BE].apply(lambda x: 100*(x.max() - x.min()) / x.mean(), axis=1)
@@ -207,11 +218,13 @@ def main():
     
     # Save file
     file_path = filedialog.asksaveasfilename(defaultextension='.csv')
-    my_cols = ['power_value', 'angle', 'GHI', 'BE-exterior', 'BE-mid-exterior', 'BE-mid-interior', 'BE-interior',
-                'FE-exterior', 'FE-mid-exterior', 'FE-mid-interior', 'FE-interior',
-                'BW-exterior', 'BW-mid-exterior', 'BW-mid-interior', 'BW-interior',
-                'FW-exterior', 'FW-mid-exterior', 'FW-mid-interior', 'FW-interior',
-                'BE mismatch', 'FE mismatch', 'BW mismatch', 'FW mismatch']
+    my_cols = ['power_value', 'power_value_non_bif', 'angle', 'GHI', 
+               'BE-exterior', 'BE-mid-exterior', 'BE-mid-interior', 'BE-interior',
+               'FE-exterior', 'FE-mid-exterior', 'FE-mid-interior', 'FE-interior',
+               'BW-exterior', 'BW-mid-exterior', 'BW-mid-interior', 'BW-interior',
+               'FW-exterior', 'FW-mid-exterior', 'FW-mid-interior', 'FW-interior',
+               'BE', 'FE', 'BW', 'FW',
+               'BE mismatch', 'FE mismatch', 'BW mismatch', 'FW mismatch']
 
     power = power.rename(columns=dict(zip(power.columns, my_cols)))
     power.to_csv(file_path, index = True)
@@ -220,39 +233,54 @@ def main():
 def create_plates_df(filtered_data):
     plate_west = pd.DataFrame(columns = range(0,m))
     plate_east = pd.DataFrame(columns = range(0,m))
+    plate_west_non_bif = pd.DataFrame(columns = range(0,m))
+    plate_east_non_bif = pd.DataFrame(columns = range(0,m))
     
     for i in range (0, m):
         
         # Exterior sensor
         if i == 0 or i == 1:
-            plate_east[i] = filtered_data['W1'] + bifaciality * filtered_data['W5']
-            plate_west[i] = filtered_data['W9'] + bifaciality * filtered_data['W13']
+            plate_east[i] = bifaciality * filtered_data['W1'] + filtered_data['W5']
+            plate_west[i] = bifaciality * filtered_data['W9'] + filtered_data['W13']
+            plate_east_non_bif[i] = filtered_data['W5']
+            plate_west_non_bif[i] = filtered_data['W13']
             
         # Mid exterior sensor
         elif i == (m / 2) - 1:
-            plate_east[i] = filtered_data['W2'] + bifaciality * filtered_data['W6']
-            plate_west[i] = filtered_data['W10'] + bifaciality * filtered_data['W14']
+            plate_east[i] = bifaciality * filtered_data['W2'] + filtered_data['W6']
+            plate_west[i] = bifaciality * filtered_data['W10'] + filtered_data['W14']
+            plate_east_non_bif[i] = filtered_data['W6']
+            plate_west_non_bif[i] = filtered_data['W14']
+            
             
         # Mid interior sensor
         elif i == (m / 2):
-            plate_east[i] = filtered_data['W3'] + bifaciality * filtered_data['W7']
-            plate_west[i] = filtered_data['W11'] + bifaciality * filtered_data['W15']
+            plate_east[i] = bifaciality * filtered_data['W3'] + filtered_data['W7']
+            plate_west[i] = bifaciality * filtered_data['W11'] + filtered_data['W15']
+            plate_east_non_bif[i] = filtered_data['W7']
+            plate_west_non_bif[i] = filtered_data['W15']
             
         # Interior sensor
         elif i == m - 1 or i == m - 2:
-            plate_east[i] = filtered_data['W4'] + bifaciality * filtered_data['W8']
-            plate_west[i] = filtered_data['W12'] + bifaciality * filtered_data['W16']
+            plate_east[i] = bifaciality * filtered_data['W4'] + filtered_data['W8']
+            plate_west[i] = bifaciality * filtered_data['W12'] + filtered_data['W16']
+            plate_east_non_bif[i] = filtered_data['W8']
+            plate_west_non_bif[i] = filtered_data['W16']
             
         # Spots without sensors (they will be interpolated)
         else:
             plate_east[i] = np.empty(len(filtered_data)) * np.nan
             plate_west[i] = np.empty(len(filtered_data)) * np.nan
+            plate_east_non_bif[i] = np.empty(len(filtered_data)) * np.nan
+            plate_west_non_bif[i] = np.empty(len(filtered_data)) * np.nan
             
     # Set temperature data
     plate_west['T'] = filtered_data['CH19']
     plate_east['T'] = filtered_data['CH19']
+    plate_west_non_bif['T'] = filtered_data['CH19']
+    plate_east_non_bif['T'] = filtered_data['CH19']
         
-    return plate_west, plate_east
+    return plate_west, plate_east, plate_west_non_bif, plate_east_non_bif
 
 # Function that outputs peak power with given irradiance maps of the system
 def calc_power(x, plate_west, plate_east, system, m, n):
