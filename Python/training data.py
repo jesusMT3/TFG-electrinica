@@ -12,7 +12,7 @@ from pvlib import tracking, location
 import numpy as np
 from datetime import timedelta
 import datalogger as dl
-
+import pvlib as pv
 
 # Global variables
 gcr = 0.27
@@ -131,9 +131,22 @@ processed_df.index = processed_df.index.floor('T')
 # Ratio GHI/DHI
 processed_df['DHI/GHI'] = meteodata['Dh'].loc[processed_df.index] / meteodata['Gh'].loc[processed_df.index]
 
-# More data
+# Wind speed and temperature
 processed_df['Wspeed'] = meteodata['V.Vien.1'].loc[processed_df.index]
 processed_df['Temp'] = meteodata['Temp. Ai 1'].loc[processed_df.index]
+
+# CLearness index
+sun_data = location.get_solarposition(times = processed_df.index)
+extraterrestrial_radiation = pv.irradiance.get_extra_radiation(processed_df.index)
+ghi = processed_df['GHI']
+ghi *= 1000
+
+kt = pv.irradiance.clearness_index(ghi = ghi, 
+                                   solar_zenith = sun_data['apparent_zenith'], 
+                                   extra_radiation = extraterrestrial_radiation)
+
+kt = pd.DataFrame({'clearness index': kt})
+processed_df['clearness index'] = kt['clearness index']
 
 # Save csv
 file_path = filedialog.asksaveasfilename(defaultextension='.csv')

@@ -252,9 +252,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 		  // If it's still in state 2 something went wrong
 		  if (state == 2){
 			  state = 0;
-			  BSP_MotorControl_GoHome(0);
-			  BSP_MotorControl_GoHome(1);
-			  BSP_MotorControl_GoHome(2);
+			  sweep = 0;
+			  direction = 1;
 		  }
 	  }
 	}
@@ -419,21 +418,13 @@ int main(void)
 				  }
 			  }
 		  }
-		  if (counter_calibration > 50){
+		  if (counter_calibration > 60){
 
 			  counter_calibration = 0;
 			  counter = 0;
-
-			  HAL_TIM_Base_Stop_IT(&htim10);
-			  BSP_MotorControl_GoHome(0);
-			  BSP_MotorControl_GoHome(1);
-			  BSP_MotorControl_GoHome(2);
-			  BSP_MotorControl_WaitWhileActive(0);
-			  BSP_MotorControl_WaitWhileActive(1);
-			  BSP_MotorControl_WaitWhileActive(2);
-			  update_pos();
-
 			  state = 0;
+			  sweep = 0;
+			  direction = 1;
 		  }
 	  }
 

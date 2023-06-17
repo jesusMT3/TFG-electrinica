@@ -38,26 +38,44 @@ processed_df = pd.read_csv(data,
                  index_col = 0)
 
 processed_df.index = pd.to_datetime(processed_df.index) 
+
 # Power and ghi
 fig, ax1 = plt.subplots(figsize=(10, 6))
-ax1.scatter(processed_df['GHI'], processed_df['optimal power'], color='blue', label='Pmax at optimum tilt')
-ax1.set_xlabel('Global Horizontal Irradiance (GHI)')
-ax1.set_ylabel('Referenced at 1000W/m$^2$')
-ax1.set_title('Pmax at optimum tilt vs GHI')
+cmap = mpl.colormaps['inferno']
+scatter1 = ax1.scatter(processed_df['GHI'], processed_df['optimal power'], c=processed_df['clearness index'],
+                      cmap=cmap, label='Pmax at optimum tilt')
+ax1.set_xlabel('Global Horizontal Irradiance [Suns]')
+ax1.set_ylabel('Referenced at STC')
+ax1.set_title('Pmax at optimum tilt')
 ax1.legend(loc='best')
 ax1.tick_params(axis='x', rotation=45)
+cbar = fig.colorbar(scatter1, ax=ax1)
+cbar.ax.set_ylabel('Clearness index')
+plt.grid()
 plt.tight_layout()  # Adjust spacing between subplots
 plt.show()
 
+# Bifacial Gains
+cmap = mpl.colormaps['viridis']
+fig, ax5 = plt.subplots(figsize=(10, 6))
+scatter5 = ax5.scatter(processed_df.index, processed_df['Optimal Bifacial gains'], c = processed_df['clearness index'],
+            cmap = cmap, label='Bifacial Gains (energy)')
+ax5.set_xlabel('DateTime')
+ax5.set_ylabel('[%]')
+ax5.set_title('Bifacial Gains')
+ax5.legend(loc='best')
+ax5.tick_params(axis='x', rotation=45)
+cbar = fig.colorbar(scatter5, ax=ax5)
+cbar.ax.set_ylabel('Clearness index')
+plt.grid()
+plt.tight_layout()  # Adjust spacing between subplots
+plt.show()
 
 # Angle and tilt
 fig, ax2 = plt.subplots(figsize=(10, 6))
 
-ax2.plot(processed_df.index, processed_df['tilt'], color='black', label='Ephemeris tilt')
-cmap = mpl.colormaps['hsv']
-scatter2 = ax2.scatter(processed_df.index, processed_df['optimal angle'], c=processed_df['Wspeed'],
-                      cmap=cmap, label='angular difference')
-
+ax2.plot(processed_df.index, processed_df['tilt'], color='orange', label='Ephemeris tilt', linewidth = 3)
+scatter2 = ax2.scatter(processed_df.index, processed_df['optimal angle'], color = 'blue', label='angular difference')
 ax2.set_xlabel('Datetime')
 ax2.set_ylabel('Degrees [$º$]')
 ax2.set_ylim([-60, 60])
@@ -65,61 +83,41 @@ ax2.set_title('Optimum tilt vs Ephemeris')
 ax2.legend(loc='best')
 ax2.tick_params(axis='x', rotation=45)
 ax2.legend(loc='best')
-
-cbar = fig.colorbar(scatter2, ax=ax2)
-cbar.ax.set_ylabel('Wind speed [m/s]')
-
+plt.grid()
 plt.tight_layout()  # Adjust spacing between subplots
 plt.show()
 
-# Power difference
-cmap = mpl.colormaps['magma']
+# Energy gain
+cmap = mpl.colormaps['plasma']
 fig, ax3 = plt.subplots(figsize=(10, 6))
-scatter3 = ax3.scatter(processed_df['DHI/GHI'], 100*(processed_df['optimal power'] - processed_df['ephemeris power'])/processed_df['ephemeris power'], c=processed_df['GHI'],
+scatter3 = ax3.scatter(processed_df['clearness index'], 100*(processed_df['optimal power'] - processed_df['ephemeris power'])/processed_df['ephemeris power'], c=processed_df['GHI'],
                       cmap=cmap, label='Energy gain')
-ax3.set_xlabel('DHI/GHI ratio')
+ax3.set_xlabel('Clearness index')
 ax3.set_ylabel('Energy gain [%]')
 ax3.set_title('Energy gain')
 ax3.legend(loc='best')
 ax3.tick_params(axis='x', rotation=45)
-
 cbar = fig.colorbar(scatter3, ax=ax3)
-cbar.ax.set_ylabel('GHI [suns]')
-
+cbar.ax.set_ylabel('GHI [Suns]')
+plt.grid()
 plt.tight_layout()  # Adjust spacing between subplots
 plt.show()
 
 # Angular difference vs clarity index
 
-cmap = mpl.colormaps['hot']
-
+cmap = mpl.colormaps['magma']
 fig, ax4 = plt.subplots(figsize=(10, 6))
-scatter4 = ax4.scatter(processed_df['DHI/GHI'], processed_df['optimal angle'] - processed_df['tilt'], c=processed_df['GHI'],
+scatter4 = ax4.scatter(processed_df['clearness index'], abs(processed_df['optimal angle'] - processed_df['tilt']), c=processed_df['GHI'],
                       cmap=cmap, label='angular difference')
-ax4.set_xlabel('DHI/GHI ratio')
+ax4.set_xlabel('Clearness index')
 ax4.set_ylabel('Degrees [º]')
-ax4.set_title('Angular difference vs DHI/GHI ratio')
+ax4.set_title('Angular difference vs clearness index')
 ax4.legend(loc='best')
 ax4.tick_params(axis='x', rotation=45)
-ax4.set_ylim([-50, 50])
-
+ax4.set_ylim([-2, 40])
 cbar = fig.colorbar(scatter4, ax=ax4)
-cbar.ax.set_ylabel('GHI [suns]')
-
-plt.tight_layout()  # Adjust spacing between subplots
-plt.show()
-
-# Bifacial Gains
-
-fig, ax5 = plt.subplots(figsize=(10, 6))
-ax5.scatter(processed_df['GHI'], processed_df['Optimal Bifacial gains'], color = 'red',label='Bifacial Gains (energy)')
-ax5.scatter(processed_df['GHI'], processed_df['Optimal Bifacial gains irr'], color = 'blue',label='Bifacial Gains (irradiance)')
-ax5.set_xlabel('Global Horizontal Irradiance (GHI) [suns]')
-ax5.set_ylabel('[%]')
-ax5.set_title('Bifacial Gains')
-ax5.legend(loc='best')
-ax5.tick_params(axis='x', rotation=45)
-
+cbar.ax.set_ylabel('GHI [Suns]')
+plt.grid()
 plt.tight_layout()  # Adjust spacing between subplots
 plt.show()
 
@@ -143,5 +141,3 @@ global_results = {'Optimal energy [kWh]': round(optimal_energy, 2),
 # Save csv
 file_path = filedialog.asksaveasfilename(defaultextension='.csv')
 pd.DataFrame([global_results]).to_csv(file_path, index=False)
-
-
